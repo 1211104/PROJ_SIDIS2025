@@ -1,0 +1,18 @@
+@startuml C1-HAP-Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C1 — Healthcare Administration Platform (Context View - C1)
+
+Person(physician, "Physician", "Checks schedule, views record appointments and registers clinic data")
+Person(pacient, "Pacient", "Views own appointment, search physician, cancels/updates appointments")
+Person(admin, "Administrator", "Register physician, view physician details, view pacient details, search pacient, schedule appointments")
+
+
+System(hapbox, "Healthcare Administration Platform", "Allow users to make appointments, register clinic data, see information of different types of users and appointments")
+
+
+Rel(physician, hapbox, "Checks schedule, views record appointments and registers clinic data")
+Rel(pacient,  hapbox, "Views own appointment, search physician, cancels/updates appointments")
+Rel(admin,  hapbox, "Register physician, view physician details, view pacient details, search pacient, schedule appointments")
+
+@enduml
