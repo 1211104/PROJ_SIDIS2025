@@ -1,0 +1,19 @@
+@startuml
+title US-04 (Microservices): As an Administrator or Patient, I want to view a physician’s details given the physician ID.
+
+actor User
+participant "PhysicianController (Physician Service)" as controller
+participant "JWTValidator" as jwt
+participant "PhysicianService" as service
+participant "PhysicianRepository" as repo
+
+User -> controller : GET /physicians/{id} + JWT
+controller -> jwt : validateToken(JWT)
+jwt --> controller : 200 OK (role=ADMIN or PATIENT)
+
+controller -> service : getPhysicianById(id)
+service -> repo : findById(id)
+repo --> service : Physician
+service --> controller : PhysicianDTO
+controller --> User : 200 OK + PhysicianDTO
+@enduml

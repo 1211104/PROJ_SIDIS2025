@@ -1,0 +1,22 @@
+@startuml
+title WP2A-09 (Microservices): As Administrator, I want to search Patient by name
+
+actor Administrator
+participant "PatientController (Patient Service)" as controller
+participant "JWTValidator" as jwt
+participant "PatientService" as service
+participant "PatientsRepository" as repo
+participant "PatientMapper" as mapper
+
+Administrator -> controller : GET /patients/search?name={name} + JWT
+controller -> jwt : validateToken(JWT)
+jwt --> controller : 200 OK (role=ADMIN)
+
+controller -> service : getPatientsByName(name, page)
+service -> repo : findByNameContainingIgnoreCase(name, pageable)
+repo --> service : List<Patient>
+service -> mapper : toPatientDTOList(List<Patient>)
+mapper --> service : List<PatientDTO>
+service --> controller : List<PatientDTO>
+controller --> Administrator : 200 OK + body(List<PatientDTO])
+@enduml
