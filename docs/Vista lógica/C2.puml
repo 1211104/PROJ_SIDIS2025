@@ -10,7 +10,10 @@ rectangle "Healthcare Management System" {
     rectangle "Physician Service" as physicianService
     rectangle "Appointment Service" as appointmentService
 
-    database "Healthcare Database" as db
+    database "Patient Database" as patientDB
+    database "Physician Database" as physicianDB
+    database "Appointment Database" as appointmentDB
+
 }
 
 patient --> patientService : Register/Login and Profile Management
@@ -20,8 +23,8 @@ admin --> appointmentService : Scheduling Management
 appointmentService --> patientService : Verifica paciente registado
 appointmentService --> physicianService : Verifica disponibilidade médico
 
-patientService --> db : CRUD Pacientes
-physicianService --> db : CRUD Médicos
-appointmentService --> db : CRUD Consultas
+patientService --> patientDB : CRUD Pacientes
+physicianService --> physicianDB : CRUD Médicos
+appointmentService --> appointmentDB : CRUD Consultas
 
 @enduml
