@@ -1,4 +1,4 @@
-@startuml HealthcareSystem_Microservices_SingleDB_Simple
+@startuml HealthcareSystem_Microservices_SingleDB_NoGateway
 
 actor "Patient" as patient
 actor "Physician" as physician
@@ -6,27 +6,20 @@ actor "Administrator" as admin
 
 rectangle "Healthcare Management System" {
 
-    rectangle "API Gateway\n(Spring Boot)\n+ JWT Authentication" as apiGateway
     rectangle "Patient Service" as patientService
     rectangle "Physician Service" as physicianService
     rectangle "Appointment Service" as appointmentService
+
     database "Healthcare Database" as db
 }
 
-patient --> apiGateway : Usa via App/Web\n(REST + JWT)
-physician --> apiGateway : Usa via Portal Médico\n(REST + JWT)
-admin --> apiGateway : Usa via Portal Administrativo\n(REST + JWT)
+patient --> patientService : Register/Login and Profile Management
+physician --> physicianService : Login/Scheduling
+admin --> appointmentService : Scheduling Management
 
-' --- Gateway e microserviços ---
-apiGateway --> patientService : Encaminha pedidos de pacientes
-apiGateway --> physicianService : Encaminha pedidos de médicos
-apiGateway --> appointmentService : Encaminha pedidos de consultas
-
-' --- Comunicação interna ---
 appointmentService --> patientService : Verifica paciente registado
-appointmentService --> physicianService : Verifica disponibilidade do médico
+appointmentService --> physicianService : Verifica disponibilidade médico
 
-' --- Base de dados única ---
 patientService --> db : CRUD Pacientes
 physicianService --> db : CRUD Médicos
 appointmentService --> db : CRUD Consultas
