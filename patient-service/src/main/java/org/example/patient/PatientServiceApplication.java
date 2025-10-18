@@ -1,13 +1,13 @@
-package org.example.proj_sidis2025;
+package org.example.patient;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ProjSidis2025Application {
+public class PatientServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ProjSidis2025Application.class, args);
+        SpringApplication.run(PatientServiceApplication.class, args);
     }
 
 }

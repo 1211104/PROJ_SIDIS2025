@@ -1,7 +1,7 @@
-package org.example.proj_sidis2025.controller;
+package org.example.patient.controller;
 
-import org.example.proj_sidis2025.model.Patient;
-import org.example.proj_sidis2025.repository.PatientRepository;
+import org.example.patient.model.Patient;
+import org.example.patient.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

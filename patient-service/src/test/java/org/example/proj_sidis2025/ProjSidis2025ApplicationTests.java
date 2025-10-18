@@ -1,4 +1,4 @@
-package org.example.proj_sidis2025;
+package org.example.patient;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

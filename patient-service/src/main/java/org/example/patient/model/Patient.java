@@ -1,4 +1,4 @@
-package org.example.proj_sidis2025.model;
+package org.example.patient.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
