@@ -5,9 +5,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-/**
- * Entidade que representa um Cliente/Paciente (Clients) do HAP.
- */
 @Entity
 public class Patient {
 
@@ -21,18 +18,15 @@ public class Patient {
 
     private String phoneNumber;
 
-    // Construtor vazio (Requerido pela especificação JPA)
     public Patient() {
     }
 
-    // Construtor com todos os campos (opcional, mas útil)
     public Patient(String patientNumber, String name, String phoneNumber) {
         this.patientNumber = patientNumber;
         this.name = name;
         this.phoneNumber = phoneNumber;
     }
 
-    // --- GETTERS (Substituem o @Getter do Lombok) ---
 
     public Long getId() {
         return id;
@@ -49,8 +43,6 @@ public class Patient {
     public String getPhoneNumber() {
         return phoneNumber;
     }
-
-    // --- SETTERS (Substituem o @Setter do Lombok) ---
 
     public void setId(Long id) {
         this.id = id;

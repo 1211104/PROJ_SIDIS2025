@@ -1,5 +1,6 @@
 package org.example.patient.controller;
 
+import org.example.patient.replication.ReplicationService;
 import org.example.patient.model.Patient;
 import org.example.patient.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,20 +16,26 @@ import java.util.Optional;
 public class PatientController {
 
     private final PatientRepository patientRepository;
+    private final ReplicationService replicationService;
 
 
     @Autowired
-    public PatientController(PatientRepository patientRepository) {
+    public PatientController(PatientRepository patientRepository, ReplicationService replicationService) {
         this.patientRepository = patientRepository;
+        this.replicationService = replicationService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Patient createPatient(@RequestBody Patient patient) {
-        if (patientRepository.existsByPatientNumber(patient.getPatientNumber())) {
-            throw new IllegalArgumentException("Patient with number " + patient.getPatientNumber() + " already exists.");
+    public ResponseEntity<Patient> createPatient(@RequestBody Patient patient) {
+        Patient savedPatient = patientRepository.save(patient);
+        try {
+            replicationService.propagatePost(savedPatient);
+        } catch (Exception e) {
+            System.err.println("Falha ao replicar POST para peers: " + e.getMessage());
         }
-        return patientRepository.save(patient);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedPatient);
     }
 
     @GetMapping

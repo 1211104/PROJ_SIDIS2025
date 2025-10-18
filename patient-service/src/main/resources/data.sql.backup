@@ -1,0 +1,9 @@
+TRUNCATE TABLE PATIENT RESTART IDENTITY;
+
+INSERT INTO PATIENT (id, patient_number, name, phone_number)
+VALUES (1, 'P9000', 'Cliente Mock 1', '910000001');
+
+INSERT INTO PATIENT (id, patient_number, name, phone_number)
+VALUES (2, 'P9001', 'Cliente Mock 2', '910000002');
+
+ALTER TABLE PATIENT ALTER COLUMN ID RESTART WITH 3;
