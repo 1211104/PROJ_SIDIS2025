@@ -11,14 +11,15 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())                    // importante p/ POST/PUT/DELETE
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/physicians/internal/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/**").authenticated()    // API pede auth
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .headers(h -> h.frameOptions(f -> f.disable()))
-                .httpBasic(Customizer.withDefaults())            // Basic Auth
+                .httpBasic(Customizer.withDefaults())
                 .build();
     }
 }
