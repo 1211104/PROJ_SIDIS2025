@@ -50,12 +50,19 @@ public class PhysicianController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Escrita continua a ser local (sem fan-out)
     @PostMapping
-    public ResponseEntity<Physician> create(@RequestBody Physician body) {
+    public ResponseEntity<?> create(@RequestBody Physician body) {
+        if (body.getPhysicianNumber() == null || body.getPhysicianNumber().isBlank()) {
+            return ResponseEntity.badRequest().body("physicianNumber é obrigatório");
+        }
+        // verificação global (local + peers)
+        if (fanout.existsAnywhereByNumber(body.getPhysicianNumber())) {
+            return ResponseEntity.status(409).body("physicianNumber já existe noutra instância");
+        }
         Physician saved = repository.save(body);
         return ResponseEntity.created(URI.create("/api/physicians/" + saved.getId())).body(saved);
     }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<Physician> update(@PathVariable Long id, @RequestBody Physician newPhysician) {

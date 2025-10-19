@@ -89,6 +89,20 @@ public class PhysicianFanoutService {
     private String key(Physician p) {
         return p.getPhysicianNumber() != null ? p.getPhysicianNumber() : String.valueOf(p.getId());
     }
+
+    // PhysicianFanoutService.java
+    public boolean existsAnywhereByNumber(String physicianNumber) {
+        // local
+        if (repo.findByPhysicianNumber(physicianNumber).isPresent()) return true;
+
+        // peers
+        for (String url : peers) {
+            var p = peerClient.getLocalByNumber(url, physicianNumber);
+            if (p != null) return true;
+        }
+        return false;
+    }
+
 }
 
 
