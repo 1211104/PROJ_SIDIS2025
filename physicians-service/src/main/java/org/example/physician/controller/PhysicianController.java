@@ -57,6 +57,26 @@ public class PhysicianController {
         return ResponseEntity.created(URI.create("/api/physicians/" + saved.getId())).body(saved);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Physician> update(@PathVariable Long id, @RequestBody Physician newPhysician) {
+        return repository.findById(id)
+                .map(existing -> {
+                    existing.setPhysicianNumber(newPhysician.getPhysicianNumber());
+                    existing.setName(newPhysician.getName());
+                    existing.setSpecialty(newPhysician.getSpecialty());
+                    existing.setContactInfo(newPhysician.getContactInfo());
+                    return ResponseEntity.ok(repository.save(existing));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (!repository.existsById(id)) return ResponseEntity.notFound().build();
+        repository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ==========================================
     // INTERNOS (apenas BD local — usados por peers)
     // ==========================================
