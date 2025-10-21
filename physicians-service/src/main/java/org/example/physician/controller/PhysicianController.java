@@ -77,6 +77,13 @@ public class PhysicianController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/by-number/{physicianNumber}")
+    public ResponseEntity<Physician> updateByNumber(@PathVariable String physicianNumber,
+                                                    @RequestBody Physician body) {
+        return fanout.putByNumberForward(physicianNumber, body);
+    }
+
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!repository.existsById(id)) return ResponseEntity.notFound().build();
@@ -110,10 +117,41 @@ public class PhysicianController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/internal/by-number/{physicianNumber}")
+    public ResponseEntity<Physician> internalUpdateByNumber(@PathVariable String physicianNumber,
+                                                            @RequestBody Physician body) {
+        return (ResponseEntity<Physician>) repository.findByPhysicianNumber(physicianNumber)
+                .map(existing -> {
+                    // não permitir trocar a chave de negócio
+                    if (body.getPhysicianNumber() != null &&
+                            !physicianNumber.equals(body.getPhysicianNumber())) {
+                        return ResponseEntity.badRequest().build();
+                    }
+                    existing.setName(body.getName());
+                    existing.setSpecialty(body.getSpecialty());
+                    existing.setContactInfo(body.getContactInfo());
+                    return ResponseEntity.ok(repository.save(existing));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+
+    @DeleteMapping("/internal/by-number/{physicianNumber}")
+    public ResponseEntity<Object> internalDeleteByNumber(@PathVariable String physicianNumber) {
+        return repository.findByPhysicianNumber(physicianNumber)
+                .map(p -> { repository.delete(p); return ResponseEntity.noContent().build(); })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // (Opcional) Debug — útil para verificar peers e porta
     @GetMapping("/debug/whoami")
     public Map<String, Object> whoami(@Value("${server.port}") int port,
                                       @Value("${hap.p2p.peers}") List<String> peers) {
         return Map.of("port", port, "peers", peers);
+    }
+
+    @DeleteMapping("/by-number/{physicianNumber}")
+    public ResponseEntity<Void> deleteByNumber(@PathVariable String physicianNumber) {
+        return fanout.deleteByNumberForward(physicianNumber);
     }
 }

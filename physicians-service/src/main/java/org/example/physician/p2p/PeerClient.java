@@ -1,6 +1,10 @@
 package org.example.physician.p2p;
 
 import org.example.physician.model.Physician;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -54,6 +58,25 @@ public class PeerClient {
                     Physician.class, physicianNumber);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    public ResponseEntity<Physician> putLocalByNumber(String baseUrl, String physicianNumber, Physician body) {
+        try {
+            String url = normalize(baseUrl) + "/api/physicians/internal/by-number/{num}";
+            return rest.exchange(url, HttpMethod.PUT, new HttpEntity<>(body), Physician.class, physicianNumber);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+    }
+
+
+    public ResponseEntity<Void> deleteLocalByNumber(String baseUrl, String physicianNumber) {
+        try {
+            String url = normalize(baseUrl) + "/api/physicians/internal/by-number/{num}";
+            return rest.exchange(url, HttpMethod.DELETE, HttpEntity.EMPTY, Void.class, physicianNumber);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
     }
 }
