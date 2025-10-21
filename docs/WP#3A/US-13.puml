@@ -1,0 +1,59 @@
+@startuml US13_Update_Cancel_Appointment_Microservices
+title US-13: As a Patient or Administrator, I want to update or cancel an appointment
+
+actor User
+participant "AppointmentController (Appointments Service)" as Controller
+participant "JWTValidator" as JWT
+participant "AppointmentService" as Service
+participant "AppointmentRepository" as Repository
+participant "AppointmentMapper" as Mapper
+database "Appointments DB" as AppointmentsDB
+
+User -> Controller : PUT /appointments/{id} \nor\nDELETE /appointments/{id} + JWT
+activate Controller
+
+Controller -> JWT : validateToken(JWT)
+activate JWT
+JWT --> Controller : 200 OK (role=PATIENT or ADMIN)
+deactivate JWT
+
+alt Update Appointment
+    Controller -> Service : updateAppointment(id, updateDTO)
+else Cancel Appointment
+    Controller -> Service : cancelAppointment(id)
+end
+activate Service
+
+Service -> Repository : findById(id)
+activate Repository
+Repository -> AppointmentsDB : SELECT * FROM appointments WHERE id = ?
+AppointmentsDB --> Repository : Appointment
+deactivate Repository
+
+Repository --> Service : Appointment
+
+alt Update Date/Time
+    Service -> Service : appointment.setDateTime(updateDTO.dateTime)
+else Cancel
+    Service -> Service : appointment.setStatus("CANCELLED")
+end
+
+Service -> Repository : save(appointment)
+activate Repository
+Repository -> AppointmentsDB : UPDATE appointments SET ... WHERE id = ?
+AppointmentsDB --> Repository : Appointment
+deactivate Repository
+
+Repository --> Service : Appointment
+Service --> Controller : Appointment
+deactivate Service
+
+Controller -> Mapper : toAppointmentView(Appointment)
+activate Mapper
+Mapper --> Controller : AppointmentView
+deactivate Mapper
+
+Controller --> User : 200 OK\nAppointmentView
+deactivate Controller
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml US12_List_Appointments_Microservices
+title US-12: As a Patient, I want to view my appointments
+
+actor Patient
+participant "AppointmentController (Appointments Service)" as Controller
+participant "JWTValidator" as JWT
+participant "AppointmentService" as Service
+participant "AppointmentRepository" as Repository
+database "Appointments DB" as AppointmentsDB
+participant "PhysicianClient (Feign / REST)" as PhysicianClient
+participant "PhysicianController (Physicians Service)" as PhysicianController
+participant "PhysicianService" as PhysicianService
+participant "PhysicianRepository" as PhysicianRepository
+database "Physicians DB" as PhysiciansDB
+participant "AppointmentMapper" as Mapper
+
+Patient -> Controller : GET /appointments/my-appointments + JWT
+activate Controller
+
+Controller -> JWT : validateToken(JWT)
+activate JWT
+JWT --> Controller : 200 OK (role=PATIENT, patientId)
+deactivate JWT
+
+Controller -> Service : listAppointmentsByPatient(patientId)
+activate Service
+
+Service -> Repository : findByPatientId(patientId)
+activate Repository
+Repository -> AppointmentsDB : SELECT * FROM appointments WHERE patient_id = ?
+AppointmentsDB --> Repository : List<Appointment>
+deactivate Repository
+
+Repository --> Service : List<Appointment>
+
+loop for each Appointment
+    Service -> PhysicianClient : GET /physicians/{physicianId}
+    activate PhysicianClient
+
+    PhysicianClient -> PhysicianController : GET /physicians/{id}
+    activate PhysicianController
+    PhysicianController -> PhysicianService : getPhysicianById(id)
+    activate PhysicianService
+    PhysicianService -> PhysicianRepository : findById(id)
+    activate PhysicianRepository
+    PhysicianRepository -> PhysiciansDB : SELECT * FROM physicians WHERE id = ?
+    PhysiciansDB --> PhysicianRepository : Physician
+    deactivate PhysicianRepository
+
+    PhysicianRepository --> PhysicianService : Physician
+    PhysicianService --> PhysicianController : PhysicianDTO
+    deactivate PhysicianService
+
+    PhysicianController --> PhysicianClient : 200 OK + PhysicianDTO
+    deactivate PhysicianController
+
+    PhysicianClient --> Service : PhysicianDTO
+    deactivate PhysicianClient
+end
+
+Service -> Mapper : toAppointmentDTOList(List<Appointment> + PhysicianDTO)
+activate Mapper
+Mapper --> Service : List<AppointmentDTO>
+deactivate Mapper
+
+Service --> Controller : List<AppointmentDTO>
+deactivate Service
+
+Controller --> Patient : 200 OK\nList<AppointmentDTO>
+deactivate Controller
+
+@enduml

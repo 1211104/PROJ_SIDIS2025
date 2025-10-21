@@ -1,22 +1,46 @@
-@startuml
-title WP2A-09 (Microservices): As Administrator, I want to search Patient by name
+@startuml US09_Search_Patient_By_Name_Microservices
+'https://plantuml.com/sequence-diagram
+title US-09: As Administrator, I want to search Patients by name
 
-actor Administrator
-participant "PatientController (Patient Service)" as controller
-participant "JWTValidator" as jwt
-participant "PatientService" as service
-participant "PatientsRepository" as repo
-participant "PatientMapper" as mapper
+autonumber
+autoactivate on
 
-Administrator -> controller : GET /patients/search?name={name} + JWT
-controller -> jwt : validateToken(JWT)
-jwt --> controller : 200 OK (role=ADMIN)
+actor "Administrator" as Admin
+participant "PatientController (Patient Service)" as Controller
+participant "JWTValidator" as JWT
+participant "PatientService" as Service
+participant "PatientsRepository" as Repo
+database "Patients DB" as DB
+participant "PatientMapper" as Mapper
 
-controller -> service : getPatientsByName(name, page)
-service -> repo : findByNameContainingIgnoreCase(name, pageable)
-repo --> service : List<Patient>
-service -> mapper : toPatientDTOList(List<Patient>)
-mapper --> service : List<PatientDTO>
-service --> controller : List<PatientDTO>
-controller --> Administrator : 200 OK + body(List<PatientDTO])
+Admin -> Controller : GET /patients/search?name={name}&page={page}\nAuthorization: Bearer <JWT>
+activate Controller
+
+Controller -> JWT : validateToken(JWT)
+activate JWT
+JWT --> Controller : 200 OK (role=ADMIN)
+deactivate JWT
+
+Controller -> Service : getPatientsByName(name, page)
+activate Service
+
+Service -> Repo : findByNameContainingIgnoreCase(name, pageable)
+activate Repo
+Repo -> DB : SELECT * FROM patients WHERE name LIKE %name%
+DB --> Repo : List<Patient>
+deactivate Repo
+
+Repo --> Service : List<Patient>
+
+Service -> Mapper : toPatientDTOList(List<Patient>)
+activate Mapper
+Mapper --> Service : List<PatientDTO>
+deactivate Mapper
+
+Service --> Controller : List<PatientDTO>
+deactivate Service
+
+Controller --> Admin : HTTP 200 OK\nBody: List<PatientDTO>
+deactivate Controller
+
 @enduml

@@ -1,0 +1,75 @@
+@startuml US03_View_Available_Slots_Microservices
+'https://plantuml.com/sequence-diagram
+title US-03: As a Patient, I want to view available appointment slots for a physician
+
+autonumber
+autoactivate on
+
+actor "Patient" as Patient
+participant "AppointmentController (Appointments Service)" as Controller
+participant "JWTValidator" as JWT
+participant "AppointmentSlotService" as SlotService
+participant "PhysicianClient (Physicians Service)" as PhysicianClient
+participant "PhysicianController (Physicians Service)" as PhysicianController
+participant "PhysicianService" as PhysicianService
+participant "PhysicianRepository" as PhysicianRepo
+database "Physicians DB" as PhysicianDB
+participant "AppointmentRepository" as AppointmentRepo
+database "Appointments DB" as AppointmentDB
+participant "AppointmentSlotViewMapper" as ViewMapper
+
+Patient -> Controller : GET /physicians/{physicianNumber}/available-slots?date={date}\nAuthorization: Bearer <JWT>
+activate Controller
+
+Controller -> JWT : validateToken(JWT)
+activate JWT
+JWT --> Controller : 200 OK (role=PATIENT, patientId)
+deactivate JWT
+
+Controller -> SlotService : getAvailableSlots(physicianNumber, date)
+activate SlotService
+
+SlotService -> PhysicianClient : GET /physicians/{physicianNumber}
+activate PhysicianClient
+
+PhysicianClient -> PhysicianController : GET /physicians/{physicianNumber}
+activate PhysicianController
+PhysicianController -> PhysicianService : getPhysicianByNumber(physicianNumber)
+activate PhysicianService
+PhysicianService -> PhysicianRepo : findByPhysicianNumber(physicianNumber)
+activate PhysicianRepo
+PhysicianRepo -> PhysicianDB : SELECT * FROM physicians WHERE physician_number = ?
+PhysicianDB --> PhysicianRepo : Physician
+deactivate PhysicianRepo
+
+PhysicianRepo --> PhysicianService : Physician
+PhysicianService --> PhysicianController : PhysicianDTO
+deactivate PhysicianService
+
+PhysicianController --> PhysicianClient : 200 OK + PhysicianDTO
+deactivate PhysicianController
+PhysicianClient --> SlotService : PhysicianDTO
+deactivate PhysicianClient
+
+SlotService -> AppointmentRepo : findByPhysicianAndDate(physicianNumber, date)
+activate AppointmentRepo
+AppointmentRepo -> AppointmentDB : SELECT * FROM appointments WHERE physician_number = ? AND date = ?
+AppointmentDB --> AppointmentRepo : List<Appointment>
+deactivate AppointmentRepo
+AppointmentRepo --> SlotService : List<Appointment>
+
+SlotService -> SlotService : generateAvailableSlots(PhysicianDTO, appointments, date)
+SlotService --> SlotService : List<AvailableSlot>
+
+SlotService -> ViewMapper : toDTOList(List<AvailableSlot>)
+activate ViewMapper
+ViewMapper --> SlotService : List<AvailableSlotDTO>
+deactivate ViewMapper
+
+SlotService --> Controller : List<AvailableSlotDTO>
+deactivate SlotService
+
+Controller --> Patient : HTTP 200 OK\nBody: List<AvailableSlotDTO>
+deactivate Controller
+
+@enduml

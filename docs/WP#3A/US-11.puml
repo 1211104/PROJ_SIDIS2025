@@ -3,28 +3,28 @@ title Schedule Appointment - Sequence Diagram (Administrator)
 
 actor Administrator
 
-participant "Consultations Service\n(Spring Boot)" as Consultations
-participant "Doctors Service\n(Spring Boot)" as Doctors
-participant "Clients Service\n(Spring Boot)" as Clients
-database "H2 Database\n(Consultations)" as DB_Consultations
-database "H2 Database\n(Doctors)" as DB_Doctors
-database "H2 Database\n(Clients)" as DB_Clients
+participant "Appointments Service" as Appointments
+participant "Physician Service" as Doctors
+participant "Patients Service" as Patients
+database "Appointments Database" as DB_Consultations
+database "Doctors Database" as DB_Doctors
+database "Patients Database" as DB_Patients
 
-Administrator -> Consultations : POST /appointments\n{patientId, doctorId, date, time, type}
+Administrator -> Appointments : POST /appointments\n{patientId, doctorId, date, time, type}
 
-Consultations -> Clients : GET /clients/{patientId}
-Clients -> DB_Clients : SELECT * FROM patients WHERE id=patientId
-DB_Clients --> Clients : Patient data
-Clients --> Consultations : 200 OK\n(Patient details)
+Appointments -> Patients : GET /patient/patientId
+Patients -> DB_Patients : SELECT * FROM patients WHERE id=patientId
+DB_Patients --> Patients : Patient data
+Patients --> Appointments : 200 OK\n(Patient details)
 
-Consultations -> Doctors : GET /doctors/{doctorId}
+Appointments -> Doctors : GET /doctors/{doctorId}
 Doctors -> DB_Doctors : SELECT * FROM doctors WHERE id=doctorId
 DB_Doctors --> Doctors : Doctor data
-Doctors --> Consultations : 200 OK\n(Doctor details)
+Doctors --> Appointments : 200 OK\n(Doctor details)
 
-Consultations -> DB_Consultations : INSERT INTO consultations\n(patientId, doctorId, date, time, type, status="SCHEDULED")
-DB_Consultations --> Consultations : Confirmation (appointmentId)
+Appointments -> DB_Consultations : INSERT INTO consultations\n(patientId, doctorId, date, time, type, status="SCHEDULED")
+DB_Consultations --> Appointments : Confirmation (appointmentId)
 
-Consultations --> Administrator : 201 Created\n{appointmentId, patient, doctor, date, time, type, status="SCHEDULED"}
+Appointments --> Administrator : 201 Created\n{appointmentId, patient, doctor, date, time, type, status="SCHEDULED"}
 
 @enduml
