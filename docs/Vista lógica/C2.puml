@@ -1,4 +1,4 @@
-@startuml HealthcareSystem_Microservices_SingleDB_NoGateway
+@startuml
 
 actor "Patient" as patient
 actor "Physician" as physician

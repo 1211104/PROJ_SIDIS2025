@@ -1,4 +1,4 @@
-@startuml US03_View_Available_Slots_Microservices
+@startuml
 'https://plantuml.com/sequence-diagram
 title US-03: As a Patient, I want to view available appointment slots for a physician
 

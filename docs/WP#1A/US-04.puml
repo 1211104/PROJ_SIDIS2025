@@ -1,5 +1,5 @@
 @startuml
-title US-04 (Microservices): As an Administrator or Patient, I want to view a physician’s details given the physician ID.
+title US-04: As an Administrator or Patient, I want to view a physician’s details given the physician ID.
 
 actor User
 participant "PhysicianController (Physician Service)" as controller

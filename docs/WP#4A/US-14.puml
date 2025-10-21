@@ -1,4 +1,4 @@
-@startuml US14_Record_Appointment_Details_Microservices
+@startuml
 title US-14: As a Physician, I want to record appointment details after a consultation
 
 autonumber

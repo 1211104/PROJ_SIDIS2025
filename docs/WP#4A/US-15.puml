@@ -1,4 +1,4 @@
-@startuml US15_View_Patient_Appointment_Records_Microservices
+@startuml
 'https://plantuml.com/sequence-diagram
 title WP3A-15 (Microservices): As a Physician, I want to view the appointment records of a patient
 

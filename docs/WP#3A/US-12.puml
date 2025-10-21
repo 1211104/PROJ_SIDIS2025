@@ -1,4 +1,4 @@
-@startuml US12_List_Appointments_Microservices
+@startuml
 title US-12: As a Patient, I want to view my appointments
 
 actor Patient

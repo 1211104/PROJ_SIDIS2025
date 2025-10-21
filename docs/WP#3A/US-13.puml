@@ -1,4 +1,4 @@
-@startuml US13_Update_Cancel_Appointment_Microservices
+@startuml
 title US-13: As a Patient or Administrator, I want to update or cancel an appointment
 
 actor User
