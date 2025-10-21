@@ -110,10 +110,22 @@ public class PhysicianController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @DeleteMapping("/internal/by-number/{physicianNumber}")
+    public ResponseEntity<Object> internalDeleteByNumber(@PathVariable String physicianNumber) {
+        return repository.findByPhysicianNumber(physicianNumber)
+                .map(p -> { repository.delete(p); return ResponseEntity.noContent().build(); })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // (Opcional) Debug — útil para verificar peers e porta
     @GetMapping("/debug/whoami")
     public Map<String, Object> whoami(@Value("${server.port}") int port,
                                       @Value("${hap.p2p.peers}") List<String> peers) {
         return Map.of("port", port, "peers", peers);
+    }
+
+    @DeleteMapping("/by-number/{physicianNumber}")
+    public ResponseEntity<Void> deleteByNumber(@PathVariable String physicianNumber) {
+        return fanout.deleteByNumberForward(physicianNumber);
     }
 }
