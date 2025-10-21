@@ -2,7 +2,7 @@
 title US-03 (Microservices): As an Administrator, I want to register a physician with details such as name, specialty, contact information, and working hours.
 
 actor Administrator
-participant "PhysicianController (Physician Service)" as controller
+participant "PhysicianController" as controller
 participant "JWTValidator" as jwt
 participant "PhysicianService" as service
 participant "PhysicianRepository" as repo

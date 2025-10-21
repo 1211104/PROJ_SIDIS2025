@@ -1,0 +1,26 @@
+@startuml
+title Healthcare Administration Platform (HAP) - Physical View (Enhanced Interactions)
+
+node "node1" {
+  component "Doctors Service" as Doctors
+}
+
+node "node2" {
+  component "Clients Service" as Clients
+}
+
+node "node3" {
+  component "Appointments Service" as Appointments
+}
+
+' Relações principais
+Appointments --> Doctors : HTTP/HTTPS
+Appointments --> Clients : HTTP/HTTPS
+
+' Ligações adicionais
+Doctors --> Appointments : HTTP/HTTPS
+Clients --> Appointments : HTTP/HTTPS
+Doctors --> Clients : HTTP/HTTPS
+Clients --> Doctors : HTTP/HTTPS
+
+@enduml
