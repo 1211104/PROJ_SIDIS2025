@@ -61,6 +61,16 @@ public class PeerClient {
         }
     }
 
+    public ResponseEntity<Physician> putLocalByNumber(String baseUrl, String physicianNumber, Physician body) {
+        try {
+            String url = normalize(baseUrl) + "/api/physicians/internal/by-number/{num}";
+            return rest.exchange(url, HttpMethod.PUT, new HttpEntity<>(body), Physician.class, physicianNumber);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+    }
+
+
     public ResponseEntity<Void> deleteLocalByNumber(String baseUrl, String physicianNumber) {
         try {
             String url = normalize(baseUrl) + "/api/physicians/internal/by-number/{num}";

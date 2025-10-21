@@ -116,6 +116,32 @@ public class PhysicianFanoutService {
         return Optional.empty();
     }
 
+    public ResponseEntity<Physician> putByNumberForward(String physicianNumber, Physician body) {
+        return (ResponseEntity<Physician>) findOwnerUrlByNumber(physicianNumber)
+                .map(owner -> {
+                    if (owner.equalsIgnoreCase(selfBaseUrl)) {
+                        // faz localmente (mesma regra do endpoint interno)
+                        return repo.findByPhysicianNumber(physicianNumber)
+                                .map(existing -> {
+                                    if (body.getPhysicianNumber() != null &&
+                                            !physicianNumber.equals(body.getPhysicianNumber())) {
+                                        return ResponseEntity.badRequest().build();
+                                    }
+                                    existing.setName(body.getName());
+                                    existing.setSpecialty(body.getSpecialty());
+                                    existing.setContactInfo(body.getContactInfo());
+                                    return ResponseEntity.ok(repo.save(existing));
+                                })
+                                .orElseGet(() -> ResponseEntity.notFound().build());
+                    } else {
+                        // forward para o owner
+                        return peerClient.putLocalByNumber(owner, physicianNumber, body);
+                    }
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build()); // não existe em lado nenhum
+    }
+
+
     // Apaga onde quer que esteja: localmente ou por forward para o owner
     public ResponseEntity<Void> deleteByNumberForward(String physicianNumber) {
         return (ResponseEntity<Void>) findOwnerUrlByNumber(physicianNumber)
