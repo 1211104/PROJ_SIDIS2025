@@ -34,10 +34,6 @@ patientsService --> PatientsDB : Reads from and writes to
 physiansService --> PhysiciansDB : Reads from and writes to
 appointmentsService --> AppointmentsDB : Reads from and writes to
 
-' *** Dependência de dados (sem FK cruzado) ***
-AppointmentsDB ..> physiansService      : <<references by (physicianNumber)>>
-AppointmentsDB ..> patientsService : <<references by (patientNumber)>>
-
 
 Rel(physician, physiansService, "Uses\n [HTTP/REST] (JSON)")
 Rel(patient,  patientsService, "Uses\n [HTTP/REST] (JSON)")
