@@ -1,0 +1,47 @@
+@startuml
+title C2 — HAP (Healthcare Administration Platform) — Container Diagram
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+
+Person(physician, "Physician", "A person that uses the system")
+Person(patient, "Patient", "A person that uses the system")
+Person(admin, "Administrator", "A person that uses the system")
+
+
+skinparam shadowing false
+
+System_Boundary(hap, "Healthcare Administration Platform") {
+
+  Container(physiansService, "Physician", "Java/Spring Boot (8084/9084)", "Handles physician management")
+  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
+  Container(appointmentsService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
+
+
+  ContainerDb(PatientsDB, "Patient DB", "PostgreSQL", "Stores pacient information")
+  ContainerDb(PhysiciansDB, "Physician", "PostgreSQL", "Stores physician information")
+  ContainerDb(AppointmentsDB, "Appointment DB", "PostgreSQL", "Stores appointment information")
+
+}
+
+' Ligações entre containers (criação de appointment valida entidades)
+appointmentsService --> physiansService : HTTP GET\n/api/physicians/by-number/{(physicianNumber)}
+appointmentsService --> patientsService      : HTTP GET\n/api/patients/number/{(patientNumber)}
+
+' Persistência local
+patientsService --> PatientsDB : Reads from and writes to
+physiansService --> PhysiciansDB : Reads from and writes to
+appointmentsService --> AppointmentsDB : Reads from and writes to
+
+' *** Dependência de dados (sem FK cruzado) ***
+AppointmentsDB ..> physiansService      : <<references by (physicianNumber)>>
+AppointmentsDB ..> patientsService : <<references by (patientNumber)>>
+
+
+Rel(physician, physiansService, "Uses\n [HTTP/REST] (JSON)")
+Rel(patient,  patientsService, "Uses\n [HTTP/REST] (JSON)")
+Rel(admin,  appointmentsService, "Uses\n [HTTP/REST] (JSON)")
+
+
+@enduml
