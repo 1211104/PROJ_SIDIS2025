@@ -1,5 +1,4 @@
 package org.example.appointment;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -13,14 +12,14 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/physicians/internal/**").permitAll()
+                        .requestMatchers("/api/appointments/internal/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll()
-                )
+                        .anyRequest().permitAll())
                 .headers(h -> h.frameOptions(f -> f.disable()))
                 .httpBasic(Customizer.withDefaults())
                 .build();
     }
 }
+
 
