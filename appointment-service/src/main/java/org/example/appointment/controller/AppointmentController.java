@@ -4,6 +4,7 @@ package org.example.appointment.controller;
 import org.example.appointment.model.Appointment;
 import org.example.appointment.model.AppointmentStatus;
 import org.example.appointment.model.ConsultationType;
+import org.example.appointment.repository.AppointmentPatchRequest;
 import org.example.appointment.repository.AppointmentRepository;
 import org.example.appointment.service.AppointmentFanoutService;
 import org.springframework.data.domain.Pageable;
@@ -105,6 +106,40 @@ public class AppointmentController {
         var found = repo.findByAppointmentNumber(appointmentNumber);
         if (found.isEmpty()) return ResponseEntity.notFound().build();
         repo.delete(found.get());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/by-number/{appointmentNumber}")
+    public ResponseEntity<?> patchByNumber(@PathVariable String appointmentNumber,
+                                           @RequestBody AppointmentPatchRequest patch) {
+        // tenta local/peer. Se referências inválidas, devolvemos 409
+        boolean ok = fanout.patchByNumberAnywhere(appointmentNumber, patch);
+        if (ok) return ResponseEntity.noContent().build();
+
+        // distinguir 409 (ref inválida) de 404 (não encontrado) com uma validação explícita
+        // se qualquer campo de ref foi pedido e não existe, devolve 409
+        if ((patch.getPhysicianNumber() != null && !fanout.physicianExists(patch.getPhysicianNumber())) ||
+                (patch.getPatientNumber() != null && !fanout.patientExists(patch.getPatientNumber()))) {
+            return ResponseEntity.status(409).body("Referências inválidas (patient/physician)");
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    /** PATCH interno: aplica só na BD local (chamado pelos peers) */
+    @PatchMapping("/internal/by-number/{appointmentNumber}")
+    public ResponseEntity<Void> internalPatch(@PathVariable String appointmentNumber,
+                                              @RequestBody AppointmentPatchRequest patch) {
+        var opt = repo.findByAppointmentNumber(appointmentNumber);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        var a = opt.get();
+        // aqui NÃO validamos refs externas (supomos que o peer já validou)
+        if (patch.getPhysicianNumber() != null) a.setPhysicianNumber(patch.getPhysicianNumber());
+        if (patch.getPatientNumber()   != null) a.setPatientNumber(patch.getPatientNumber());
+        if (patch.getConsultationType()!= null) a.setConsultationType(patch.getConsultationType());
+        if (patch.getStatus()          != null) a.setStatus(patch.getStatus());
+        if (patch.getStartTime()       != null) a.setStartTime(patch.getStartTime());
+        if (patch.getEndTime()         != null) a.setEndTime(patch.getEndTime());
+        repo.save(a);
         return ResponseEntity.noContent().build();
     }
 

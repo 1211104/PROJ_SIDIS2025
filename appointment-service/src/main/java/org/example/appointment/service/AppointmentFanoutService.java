@@ -3,6 +3,7 @@ package org.example.appointment.service;
 
 import org.example.appointment.model.Appointment;
 import org.example.appointment.p2p.PeerClient;
+import org.example.appointment.repository.AppointmentPatchRequest;
 import org.example.appointment.repository.AppointmentRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -131,6 +132,45 @@ public class AppointmentFanoutService {
             }
         }
         return false;
+    }
+
+    public boolean patchByNumberAnywhere(String apptNumber, AppointmentPatchRequest p) {
+        var local = repo.findByAppointmentNumber(apptNumber);
+        if (local.isPresent()) {
+            // validar referências se forem alteradas
+            if (p.getPhysicianNumber() != null && !physicianExists(p.getPhysicianNumber()))
+                return false; // controller devolverá 409
+            if (p.getPatientNumber() != null && !patientExists(p.getPatientNumber()))
+                return false;
+
+            var a = local.get();
+            applyPatch(a, p);
+            repo.save(a);
+            return true;
+        }
+        // não está local: tenta nos peers
+        for (String url : peers) {
+            var a = peerClient.getLocalByNumber(url, apptNumber);
+            if (a != null) {
+                // valida antes de reencaminhar
+                if (p.getPhysicianNumber() != null && !physicianExists(p.getPhysicianNumber()))
+                    return false;
+                if (p.getPatientNumber() != null && !patientExists(p.getPatientNumber()))
+                    return false;
+
+                return peerClient.patchLocalByNumber(url, apptNumber, p);
+            }
+        }
+        return false;
+    }
+
+    private void applyPatch(Appointment a, AppointmentPatchRequest p) {
+        if (p.getPhysicianNumber() != null) a.setPhysicianNumber(p.getPhysicianNumber());
+        if (p.getPatientNumber()   != null) a.setPatientNumber(p.getPatientNumber());
+        if (p.getConsultationType()!= null) a.setConsultationType(p.getConsultationType());
+        if (p.getStatus()          != null) a.setStatus(p.getStatus());
+        if (p.getStartTime()       != null) a.setStartTime(p.getStartTime());
+        if (p.getEndTime()         != null) a.setEndTime(p.getEndTime());
     }
 
 }
