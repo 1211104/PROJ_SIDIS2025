@@ -114,5 +114,24 @@ public class AppointmentFanoutService {
         }
         return false;
     }
+
+    public boolean deleteByNumberAnywhere(String apptNumber) {
+        // tenta local primeiro
+        var local = repo.findByAppointmentNumber(apptNumber);
+        if (local.isPresent()) {
+            repo.delete(local.get());
+            return true;
+        }
+        // tenta nos peers
+        for (String url : peers) {
+            var a = peerClient.getLocalByNumber(url, apptNumber);
+            if (a != null) {
+                // manda o peer apagar
+                if (peerClient.deleteLocalByNumber(url, apptNumber)) return true;
+            }
+        }
+        return false;
+    }
+
 }
 

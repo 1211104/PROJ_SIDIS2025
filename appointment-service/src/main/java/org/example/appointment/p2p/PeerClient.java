@@ -46,5 +46,15 @@ public class PeerClient {
             return null;
         }
     }
+
+    public boolean deleteLocalByNumber(String baseUrl, String apptNumber) {
+        try {
+            rest.delete(normalize(baseUrl) + "/api/appointments/internal/by-number/{num}", apptNumber);
+            return true; // 204/200 = apagou
+        } catch (Exception e) {
+            return false; // 404/peer down -> não apagou
+        }
+    }
+
 }
 

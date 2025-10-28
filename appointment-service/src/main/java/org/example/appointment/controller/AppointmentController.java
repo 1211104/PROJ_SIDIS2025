@@ -90,5 +90,23 @@ public class AppointmentController {
         return repo.findByAppointmentNumber(appointmentNumber)
                 .map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
+
+    // (público, com fan-out)
+    @DeleteMapping("/by-number/{appointmentNumber}")
+    public ResponseEntity<?> deleteByNumber(@PathVariable String appointmentNumber) {
+        boolean deleted = fanout.deleteByNumberAnywhere(appointmentNumber);
+        return deleted ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
+    }
+
+    //apaga só na BD local (usado pelos peers)
+    @DeleteMapping("/internal/by-number/{appointmentNumber}")
+    public ResponseEntity<Void> internalDeleteByNumber(@PathVariable String appointmentNumber) {
+        var found = repo.findByAppointmentNumber(appointmentNumber);
+        if (found.isEmpty()) return ResponseEntity.notFound().build();
+        repo.delete(found.get());
+        return ResponseEntity.noContent().build();
+    }
+
 }
 
