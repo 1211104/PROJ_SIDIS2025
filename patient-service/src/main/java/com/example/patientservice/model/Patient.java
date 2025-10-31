@@ -1,4 +1,4 @@
-package org.example.patient.model;
+package com.example.patientservice.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

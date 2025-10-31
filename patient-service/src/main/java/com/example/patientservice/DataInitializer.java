@@ -1,7 +1,7 @@
-package org.example.patient;
+package com.example.patientservice;
 
-import org.example.patient.model.Patient;
-import org.example.patient.repository.PatientRepository;
+import com.example.patientservice.model.Patient;
+import com.example.patientservice.repository.PatientRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 

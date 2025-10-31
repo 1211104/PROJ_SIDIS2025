@@ -1,6 +1,6 @@
-package org.example.patient.controller;
+package com.example.patientservice.controller;
 
-import org.example.patient.model.Patient;
+import com.example.patientservice.model.Patient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;

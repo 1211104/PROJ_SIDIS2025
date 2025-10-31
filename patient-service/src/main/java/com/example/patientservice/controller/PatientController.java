@@ -1,8 +1,8 @@
-package org.example.patient.controller;
+package com.example.patientservice.controller;
 
-import org.example.patient.replication.ReplicationService;
-import org.example.patient.model.Patient;
-import org.example.patient.repository.PatientRepository;
+import com.example.patientservice.replication.ReplicationService;
+import com.example.patientservice.model.Patient;
+import com.example.patientservice.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

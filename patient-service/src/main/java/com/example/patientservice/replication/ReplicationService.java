@@ -1,6 +1,6 @@
-package org.example.patient.replication;
+package com.example.patientservice.replication;
 
-import org.example.patient.model.Patient;
+import com.example.patientservice.model.Patient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
