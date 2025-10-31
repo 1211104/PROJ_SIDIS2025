@@ -14,22 +14,52 @@ public class AppointmentPatchRequest {
     private LocalDateTime endTime;
 
     // getters e setters
-    public String getPhysicianNumber() { return physicianNumber; }
-    public void setPhysicianNumber(String physicianNumber) { this.physicianNumber = physicianNumber; }
+    public String getPhysicianNumber() {
+        return physicianNumber;
+    }
 
-    public String getPatientNumber() { return patientNumber; }
-    public void setPatientNumber(String patientNumber) { this.patientNumber = patientNumber; }
+    public void setPhysicianNumber(String physicianNumber) {
+        this.physicianNumber = physicianNumber;
+    }
 
-    public ConsultationType getConsultationType() { return consultationType; }
-    public void setConsultationType(ConsultationType consultationType) { this.consultationType = consultationType; }
+    public String getPatientNumber() {
+        return patientNumber;
+    }
 
-    public AppointmentStatus getStatus() { return status; }
-    public void setStatus(AppointmentStatus status) { this.status = status; }
+    public void setPatientNumber(String patientNumber) {
+        this.patientNumber = patientNumber;
+    }
 
-    public LocalDateTime getStartTime() { return startTime; }
-    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    public ConsultationType getConsultationType() {
+        return consultationType;
+    }
 
-    public LocalDateTime getEndTime() { return endTime; }
-    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+    public void setConsultationType(ConsultationType consultationType) {
+        this.consultationType = consultationType;
+    }
+
+    public AppointmentStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(AppointmentStatus status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
 }
 

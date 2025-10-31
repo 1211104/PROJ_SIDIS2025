@@ -23,7 +23,8 @@ public class AppointmentController {
     private final AppointmentFanoutService fanout;
 
     public AppointmentController(AppointmentRepository repo, AppointmentFanoutService fanout) {
-        this.repo = repo; this.fanout = fanout;
+        this.repo = repo;
+        this.fanout = fanout;
     }
 
     // ---------- PÚBLICOS (fan-out de leitura) ----------
@@ -125,7 +126,9 @@ public class AppointmentController {
         return ResponseEntity.notFound().build();
     }
 
-    /** PATCH interno: aplica só na BD local (chamado pelos peers) */
+    /**
+     * PATCH interno: aplica só na BD local (chamado pelos peers)
+     */
     @PatchMapping("/internal/by-number/{appointmentNumber}")
     public ResponseEntity<Void> internalPatch(@PathVariable String appointmentNumber,
                                               @RequestBody AppointmentPatchRequest patch) {
@@ -134,11 +137,11 @@ public class AppointmentController {
         var a = opt.get();
         // aqui NÃO validamos refs externas (supomos que o peer já validou)
         if (patch.getPhysicianNumber() != null) a.setPhysicianNumber(patch.getPhysicianNumber());
-        if (patch.getPatientNumber()   != null) a.setPatientNumber(patch.getPatientNumber());
-        if (patch.getConsultationType()!= null) a.setConsultationType(patch.getConsultationType());
-        if (patch.getStatus()          != null) a.setStatus(patch.getStatus());
-        if (patch.getStartTime()       != null) a.setStartTime(patch.getStartTime());
-        if (patch.getEndTime()         != null) a.setEndTime(patch.getEndTime());
+        if (patch.getPatientNumber() != null) a.setPatientNumber(patch.getPatientNumber());
+        if (patch.getConsultationType() != null) a.setConsultationType(patch.getConsultationType());
+        if (patch.getStatus() != null) a.setStatus(patch.getStatus());
+        if (patch.getStartTime() != null) a.setStartTime(patch.getStartTime());
+        if (patch.getEndTime() != null) a.setEndTime(patch.getEndTime());
         repo.save(a);
         return ResponseEntity.noContent().build();
     }

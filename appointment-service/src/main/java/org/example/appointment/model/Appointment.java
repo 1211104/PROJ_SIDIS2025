@@ -12,13 +12,13 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="appointment_number", nullable=false, unique=true)
+    @Column(name = "appointment_number", nullable = false, unique = true)
     private String appointmentNumber;
 
-    @Column(name="physician_number", nullable=false)
+    @Column(name = "physician_number", nullable = false)
     private String physicianNumber;
 
-    @Column(name="patient_number", nullable=false)
+    @Column(name = "patient_number", nullable = false)
     private String patientNumber;
 
     @Enumerated(EnumType.STRING)
@@ -30,7 +30,8 @@ public class Appointment {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
-    public Appointment() {}
+    public Appointment() {
+    }
 
     public Appointment(String appointmentNumber, String physicianNumber, String patientNumber,
                        ConsultationType consultationType, AppointmentStatus status,

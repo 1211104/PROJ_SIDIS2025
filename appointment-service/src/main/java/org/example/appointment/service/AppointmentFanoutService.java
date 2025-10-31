@@ -44,7 +44,7 @@ public class AppointmentFanoutService {
                 .toList();
 
         this.physicianUrls = splitCsv(physiciansProp).stream().map(this::norm).toList();
-        this.patientUrls   = splitCsv(patientsProp).stream().map(this::norm).toList();
+        this.patientUrls = splitCsv(patientsProp).stream().map(this::norm).toList();
     }
 
     private static List<String> splitCsv(String s) {
@@ -53,7 +53,9 @@ public class AppointmentFanoutService {
                 .map(String::trim).filter(v -> !v.isEmpty()).toList();
     }
 
-    private String norm(String url){ return url.endsWith("/") ? url.substring(0,url.length()-1) : url; }
+    private String norm(String url) {
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
 
     // --- Fan-out (leituras)
     public List<Appointment> aggregateSearch(String physician, String patient) {
@@ -92,7 +94,8 @@ public class AppointmentFanoutService {
             try {
                 var r = externalRest.getForEntity(base + "/api/physicians/by-number/" + physicianNumber, String.class);
                 if (r.getStatusCode().is2xxSuccessful()) return true;
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         return false;
     }
@@ -102,7 +105,8 @@ public class AppointmentFanoutService {
             try {
                 var r = externalRest.getForEntity(base + "/api/patients/number/" + patientNumber, String.class);
                 if (r.getStatusCode().is2xxSuccessful()) return true;
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         return false;
     }
@@ -166,11 +170,11 @@ public class AppointmentFanoutService {
 
     private void applyPatch(Appointment a, AppointmentPatchRequest p) {
         if (p.getPhysicianNumber() != null) a.setPhysicianNumber(p.getPhysicianNumber());
-        if (p.getPatientNumber()   != null) a.setPatientNumber(p.getPatientNumber());
-        if (p.getConsultationType()!= null) a.setConsultationType(p.getConsultationType());
-        if (p.getStatus()          != null) a.setStatus(p.getStatus());
-        if (p.getStartTime()       != null) a.setStartTime(p.getStartTime());
-        if (p.getEndTime()         != null) a.setEndTime(p.getEndTime());
+        if (p.getPatientNumber() != null) a.setPatientNumber(p.getPatientNumber());
+        if (p.getConsultationType() != null) a.setConsultationType(p.getConsultationType());
+        if (p.getStatus() != null) a.setStatus(p.getStatus());
+        if (p.getStartTime() != null) a.setStartTime(p.getStartTime());
+        if (p.getEndTime() != null) a.setEndTime(p.getEndTime());
     }
 
 }

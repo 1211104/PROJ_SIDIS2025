@@ -9,7 +9,9 @@ import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
     Optional<Appointment> findByAppointmentNumber(String appointmentNumber);
+
     Page<Appointment> findByPhysicianNumber(String physicianNumber, Pageable p);
+
     Page<Appointment> findByPatientNumber(String patientNumber, Pageable p);
 }
 

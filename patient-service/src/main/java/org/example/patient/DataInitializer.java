@@ -4,6 +4,7 @@ import org.example.patient.model.Patient;
 import org.example.patient.repository.PatientRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+
 import java.util.List;
 
 @Component
