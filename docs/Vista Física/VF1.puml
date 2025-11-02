@@ -1,15 +1,20 @@
-@startuml C1-HAP-Context
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+@startuml
+title VF1 — Interação de serviços
 
-title VF1 — Comunicação entre componentes
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-Person(physician, "Physician Service", "Checks schedule, views record appointments and registers clinic data")
-Person(patient, "Patient Service", "Views own appointment, search physician, cancels/updates appointments")
-Person(Appointments, "Appointment Service", "Register physician, view physician details, view patient details, search patient, schedule appointments")
+skinparam shadowing false
+
+System_Boundary(hap, "Healthcare Administration Platform") {
+
+  Container(physiciansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
+  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
+  Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
+
+}
 
 
-Rel(Appointments, physician, "Register non-existing data")
-Rel(Appointments,  patient, "Register non-existing data")
-
+appointmentService --> physiciansService
+appointmentService --> patientsService
 
 @enduml

@@ -28,7 +28,7 @@ Rel(PatientController, PatientDB, "Lê e Escreve", "JDBC")
 Rel(PhysicianController, PhysicianDB, "Lê e Escreve", "JDBC")
 Rel_Right(AppointmentController, AppointmentDB, "Lê e Escreve", "JDBC")
 
-Rel_Down(AppointmentServiceNode, APIGatewayNode, "Realiza POST de dados inexistentes nos outros serviços.", "HTTP/REST")
+Rel_Down(AppointmentServiceNode, APIGatewayNode, "", "HTTP/REST")
 
 Rel_Right(APIGatewayNode, PatientServiceNode, "Routing para Patient Service", "HTTP/REST")
 Rel_Down(APIGatewayNode, PhysicianServiceNode, "Routing para Physicians Service", "HTTP/REST")
