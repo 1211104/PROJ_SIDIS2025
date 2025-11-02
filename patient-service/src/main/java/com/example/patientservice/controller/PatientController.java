@@ -77,15 +77,50 @@ public class PatientController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @RequestBody Patient patientDetails) {
-        return patientRepository.findById(id)
-                .map(patient -> {
-                    patient.setName(patientDetails.getName());
-                    patient.setPhoneNumber(patientDetails.getPhoneNumber());
+    public ResponseEntity<?> updatePatient(@PathVariable Long id, @RequestBody Patient patientDetails) {
 
-                    Patient updatedPatient = patientRepository.save(patient);
-                    return ResponseEntity.ok(updatedPatient);
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        try {
+            return patientRepository.findById(id)
+                    .map(patient -> {
+                        if (patientDetails.getName() != null) {
+                            patient.setName(patientDetails.getName());
+                        }
+                        if (patientDetails.getPhoneNumber() != null) {
+                            patient.setPhoneNumber(patientDetails.getPhoneNumber());
+                        }
+
+                        Patient updatedPatient = patientRepository.save(patient);
+
+                        try {
+                            replicationService.propagatePut(updatedPatient);
+                        } catch (Exception e) {
+                            System.err.println("Falha ao replicar PUT para peers: " + e.getMessage());
+                        }
+
+                        return ResponseEntity.ok(updatedPatient);
+                    })
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+
+        } catch (DataIntegrityViolationException e) {
+            String errorMessage = "Violação de integridade de dados: valor único duplicado durante a atualização.";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
+        if (!patientRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        patientRepository.deleteById(id);
+
+        try {
+            replicationService.propagateDelete(id);
+        } catch (Exception e) {
+            System.err.println("Falha ao replicar DELETE para peers: " + e.getMessage());
+        }
+
+        return ResponseEntity.noContent().build();
     }
 }
