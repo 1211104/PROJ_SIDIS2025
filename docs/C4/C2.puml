@@ -29,9 +29,9 @@ System_Boundary(hap, "Healthcare Administration Platform") {
 
 }
 
-physician -right-> physiansService : Uses\n [HTTP/REST] (JSON)
-patient -down-> patientsService : Uses\n [HTTP/REST] (JSON)
-admin -down-> appointmentService : Uses\n [HTTP/REST] (JSON)
+physician -right-> api_gw : Uses\n [HTTP/REST] (JSON)
+patient -down-> api_gw : Uses\n [HTTP/REST] (JSON)
+admin -down-> api_gw : Uses\n [HTTP/REST] (JSON)
 
 
 Rel_Right(api_gw, discovery_server, "Registers and discovers services available", "HTTP")
