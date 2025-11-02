@@ -19,14 +19,14 @@ title VF3 — Comunicação entre várias replicas dos serviços
         ContainerDb(AppointmentDBB, "Appointment Database B", "H2 In-Memory DB", "Armazena dados das consultas.")
     }
 
-    Deployment_Node(PatientServiceNodeA, "Patient Service A", "Spring Boot", "Ambiente do serviço de Pacients.") {
-        Container(PatientControllerA, "Patient Controller A", "REST API", "Expõe a API (/api/patients).")
-        ContainerDb(PatientDBA, "Patient Database A", "H2 In-Memory DB", "Armazena dados de Pacients.")
+    Deployment_Node(PatientServiceNodeA, "Patient Service 1", "Spring Boot", "Ambiente do serviço de Pacients.") {
+        Container(PatientControllerA, "Patient Controller 1", "REST API", "Expõe a API (/api/patients).")
+        ContainerDb(PatientDBA, "Patient Database 1", "H2 In-Memory DB", "Armazena dados de Pacients.")
     }
 
-    Deployment_Node(PatientServiceNodeB, "Patient Service B", "Spring Boot", "Ambiente do serviço de Pacients.") {
-            Container(PatientControllerB, "Patient Controller B", "REST API", "Expõe a API (/api/patients).")
-            ContainerDb(PatientDBB, "Patient Database B", "H2 In-Memory DB", "Armazena dados de Pacients.")
+    Deployment_Node(PatientServiceNodeB, "Patient Service 2", "Spring Boot", "Ambiente do serviço de Pacients.") {
+            Container(PatientControllerB, "Patient Controller 2", "REST API", "Expõe a API (/api/patients).")
+            ContainerDb(PatientDBB, "Patient Database 2", "H2 In-Memory DB", "Armazena dados de Pacients.")
     }
 
     Deployment_Node(PhysicianServiceNodeA, "Physicians Service A", "Spring Boot", "Ambiente de serviço de Physicians.") {
