@@ -1,0 +1,15 @@
+@startuml C1-HAP-Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title VF1 — Healthcare Administration Platform
+
+Person(physician, "Physician Service", "Checks schedule, views record appointments and registers clinic data")
+Person(patient, "Patient Service", "Views own appointment, search physician, cancels/updates appointments")
+Person(Appointments, "Appointment Service", "Register physician, view physician details, view patient details, search patient, schedule appointments")
+
+
+Rel(Appointments, physician, "Register non-existing data")
+Rel(Appointments,  patient, "Register non-existing data")
+
+
+@enduml
