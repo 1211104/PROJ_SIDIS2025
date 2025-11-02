@@ -1,0 +1,54 @@
+@startuml
+title Logical View
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+
+class Physician {
+  + id: Long
+  + physicianNumber: String
+  + name: String
+  + specialty: String
+  + contactInfo: String
+}
+
+class Patient {
+  + id: Long
+  + patientNumber: String
+  + name: String
+  + phoneNumber: String
+}
+
+class Appointment {
+    +String physicianNumber
+    +String patientNumber
+    +ConsultationType consultationType
+    +AppointmentStatus status
+    +LocalDateTime startTime
+    +LocalDateTime endTime
+
+  + physicianNumber: String
+  + patientNumber: String
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsultationType {
+  IN_PERSON
+  REMOTE
+}
+
+Physician "1" -- "0..*" Appointment : (has)
+
+Patient "1" -- "0..*" Appointment : (has)
+
+Appointment *-- "1" AppointmentStatus : uses >
+Appointment *-- "1" ConsultationType : uses >
+
+@enduml

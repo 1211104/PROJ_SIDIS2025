@@ -2,33 +2,6 @@
 
 Com este documento é pretendido demonstrar os diagramas criados e explicar de forma resumida o funcionamento do projeto.
 
-## Vista Lógica
-
-### Vista Lógica 1
-
-Com este diagrama pretende-se representar a interação das diferentes entidades com o sistema.
-
-![C1](C4/C1.svg)
-
-- O Patient pode visualizar os próprios Appointments e cancelá-los ou alterá-los. Este também pode pesquisar Physicians.
-- O Physician pode ver e criar Appointments.
-- O Administrator pode registar e alterar todos os dados existentes no serviço.
-
-### Vista Lógica 2
-
-Com este diagrama pretende-se representar o fluxo de pedidos das diferentes entidades até à alteração das bases de dados.
-
-![C2](C4/C2.svg)
-
-- Cada entidade comunica com o respetivo serviço (administrator pode comunicar com qualquer serviço).
-- Os serviços estão ligados à API Gateway e ao Discovery Server para facilitar a comunicação entre os mesmos.
-- Cada serviço está também ligado à própria base de dados para guardar informações pretendidas.
-
-### Vista Lógica 3
-
-
-![C3](C4/C3.svg)
-
 ## Vista Física
 
 ### Vista Física Nível 1
@@ -60,5 +33,35 @@ Com este diagrama pretende-se representar as comunicações realizadas quando es
 - Sempre que se realizar um pedido HTTP/REST em qualquer instância de qualquer componente, esse pedido será encaminhado à API Gateway.
 - A API Gateway é responsável por enviar os pedidos às diferentes réplicas.
 - Assim é mantida a coerencia de dados entre as diferentes instâncias.
+
+## C4
+
+### C1 - Context View
+
+Com este diagrama pretende-se representar a interação das diferentes entidades com o sistema.
+
+![C1](C4/C1.svg)
+
+- O Patient pode visualizar os próprios Appointments e cancelá-los ou alterá-los. Este também pode pesquisar Physicians.
+- O Physician pode ver e criar Appointments.
+- O Administrator pode registar e alterar todos os dados existentes no serviço.
+
+### C2 - Component View
+
+Com este diagrama pretende-se representar o fluxo de pedidos das diferentes entidades até à alteração das bases de dados.
+
+![C2](C4/C2.svg)
+
+- Cada entidade comunica com o respetivo serviço (administrator pode comunicar com qualquer serviço).
+- Os serviços estão ligados à API Gateway e ao Discovery Server para facilitar a comunicação entre os mesmos.
+- Cada serviço está também ligado à própria base de dados para guardar informações pretendidas.
+
+### C3 - Component View
+
+Com este diagrama pretende-se detalhar os componentes internos do contentor appointment-service. Este serviço é o mais 
+complexo do sistema, pois além de gerir os seus próprios dados, é responsável por orquestrar validações com outros serviços 
+e agregar dados de outras réplicas de si mesmo (num modelo P2P).
+
+![C3](C4/C3.svg)
 
 
