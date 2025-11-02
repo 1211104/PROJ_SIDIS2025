@@ -8,7 +8,7 @@ Com este documento é pretendido demonstrar os diagramas criados e explicar de f
 
 Com este diagrama pretende-se representar a interação das diferentes entidades com o sistema.
 
-![C1](docs/C4/C1.svg)
+![C1](C4/C1.svg)
 
 - O Patient pode visualizar os próprios Appointments e cancelá-los ou alterá-los. Este também pode pesquisar Physicians.
 - O Physician pode ver e criar Appointments.
@@ -18,13 +18,16 @@ Com este diagrama pretende-se representar a interação das diferentes entidades
 
 Com este diagrama pretende-se representar o fluxo de pedidos das diferentes entidades até à alteração das bases de dados.
 
-![C2](docs/C4/C2.svg)
+![C2](C4/C2.svg)
 
 - Cada entidade comunica com o respetivo serviço (administrator pode comunicar com qualquer serviço).
 - Os serviços estão ligados à API Gateway e ao Discovery Server para facilitar a comunicação entre os mesmos.
 - Cada serviço está também ligado à própria base de dados para guardar informações pretendidas.
 
 ### Vista Lógica 3
+
+
+![C3](C4/C3.svg)
 
 ## Vista Física
 
@@ -33,7 +36,7 @@ Com este diagrama pretende-se representar o fluxo de pedidos das diferentes enti
 
 Com este diagrama pretende-se representar a comunicação entre os diferentes componentes.
 
-![Vista Física Nivel 1](docs/Vista Física/VF1.svg)
+![Vista Física Nivel 1](Vista Física/VF1.svg)
 
 - O AppointmentService é o único componente capaz de comunicar com outro tipo de componentes diferentes.
 - Caso algum dado relacionado com Patients ou Physicians seja adicionado no AppointmentService, este irá verificar se estes já existem nas databases dos respetivos serviços.
@@ -43,7 +46,7 @@ Com este diagrama pretende-se representar a comunicação entre os diferentes co
 
 Com este diagrama pretende-se representar a comunicação dos diferentes serviços com a API Gateway como também a relação do Controller destes serviços com a própria base de dados.
 
-![Vista Física Nivel 2](docs/Vista Física/VF2.svg)
+![Vista Física Nivel 2](Vista Física/VF2.svg)
 
 - Quando ocorrer um pedido HTTP/REST entre componentes, este pedido será direcionado à API Gateway.
 - Cada Serviço terá o seu Controller que será capaz de modificar a própria base de dados.
@@ -52,7 +55,7 @@ Com este diagrama pretende-se representar a comunicação dos diferentes serviç
 
 Com este diagrama pretende-se representar as comunicações realizadas quando estão a correr várias instancias de cada serviço.
 
-![Vista Física Nivel 3](docs/Vista Física/VF3.svg)
+![Vista Física Nivel 3](Vista Física/VF3.svg)
 
 - Sempre que se realizar um pedido HTTP/REST em qualquer instância de qualquer componente, esse pedido será encaminhado à API Gateway.
 - A API Gateway é responsável por enviar os pedidos às diferentes réplicas.
