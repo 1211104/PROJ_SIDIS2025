@@ -3,7 +3,7 @@
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
 
-title VF2 — Healthcare Administration Platform
+title VF2 — Comunicação com a API Gateway e Controller/Database
 
     Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway / Nginx", "Ponto de entrada central para roteamento de chamadas internas e externas.") {
         Container(APIGateway, "API Gateway", "Router/Proxy", "Responsável por rotear chamadas do Appointment Service e externas.")
