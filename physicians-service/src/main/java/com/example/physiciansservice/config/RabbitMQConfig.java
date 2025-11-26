@@ -1,6 +1,6 @@
 package com.example.physiciansservice.config;
 
-import org.springframework.amqp.core.FanoutExchange;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -15,19 +15,32 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.physicians}")
     private String exchangeName;
 
-    // 1. Cria a Exchange do tipo Fanout (Broadcast) automaticamente
+    // Cria a Exchange do tipo Fanout (Broadcast) automaticamente
     @Bean
     public FanoutExchange physicianExchange() {
         return new FanoutExchange(exchangeName);
     }
 
-    // 2. Conversor para enviar JSON
+    // A fila única para cada instância
+    // Cada vez que uma instância (A ou B) arranca, cria uma fila nova só para si
+    @Bean
+    public Queue syncQueue() {
+        return new AnonymousQueue();
+    }
+
+    // Liga a fila única desta instância à Exchange Fanout
+    @Bean
+    public Binding binding(FanoutExchange exchange, Queue syncQueue) {
+        return BindingBuilder.bind(syncQueue).to(exchange);
+    }
+
+    // Conversor para enviar JSON
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // 3. Template configurado com o conversor JSON
+    // Template configurado com o conversor JSON
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);

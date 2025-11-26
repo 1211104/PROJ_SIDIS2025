@@ -21,17 +21,28 @@ public class PhysicianProducer {
     }
 
     public void sendPhysicianCreated(Physician physician) {
-        // Converte a Entidade da BD num Evento DTO
+        sendEvent(physician, "CREATED");
+    }
+
+    public void sendPhysicianUpdated(Physician physician) {
+        sendEvent(physician, "UPDATED");
+    }
+
+    public void sendPhysicianDeleted(String physicianNumber) {
+        // Para apagar, necessário ID e do tipo de evento
+        PhysicianEvent event = new PhysicianEvent(physicianNumber, null, null, "DELETED");
+        logger.info("--> RabbitMQ: A enviar evento DELETED para {}", physicianNumber);
+        rabbitTemplate.convertAndSend(exchangeName, "", event);
+    }
+
+    private void sendEvent(Physician p, String type) {
         PhysicianEvent event = new PhysicianEvent(
-                physician.getPhysicianNumber(),
-                physician.getName(),
-                physician.getSpecialty(),
-                "CREATED"
+                p.getPhysicianNumber(),
+                p.getName(),
+                p.getSpecialty(),
+                type
         );
-
-        logger.info("--> RabbitMQ: A enviar evento CREATED para o médico {}", physician.getPhysicianNumber());
-
-        // Envia para a Exchange, sem routing key ("") pois é Fanout
+        logger.info("--> RabbitMQ: A enviar evento {} para {}", type, p.getPhysicianNumber());
         rabbitTemplate.convertAndSend(exchangeName, "", event);
     }
 }

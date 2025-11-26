@@ -74,18 +74,42 @@ public class PhysicianController {
     }
 
 
-    // UPDATE / DELETE (Simplificados para Local)
-    // Nota: Idealmente, também deveriam emitir eventos (UPDATED, DELETED)
-
     @PutMapping("/{id}")
     public ResponseEntity<Physician> update(@PathVariable Long id, @RequestBody Physician newPhysician) {
         return repository.findById(id)
                 .map(existing -> {
+                    // 1. Atualiza Localmente
                     existing.setPhysicianNumber(newPhysician.getPhysicianNumber());
                     existing.setName(newPhysician.getName());
                     existing.setSpecialty(newPhysician.getSpecialty());
                     existing.setContactInfo(newPhysician.getContactInfo());
-                    return ResponseEntity.ok(repository.save(existing));
+                    Physician saved = repository.save(existing);
+
+                    // 2. Envia evento UPDATED
+                    producer.sendPhysicianUpdated(saved);
+
+                    return ResponseEntity.ok(saved);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/by-number/{physicianNumber}")
+    public ResponseEntity<Physician> updateByNumber(@PathVariable String physicianNumber,
+                                                    @RequestBody Physician body) {
+        return repository.findByPhysicianNumber(physicianNumber)
+                .map(existing -> {
+                    // 1. Atualizar os campos com os dados novos
+                    existing.setName(body.getName());
+                    existing.setSpecialty(body.getSpecialty());
+                    existing.setContactInfo(body.getContactInfo());
+
+                    // 2. Guardar na Base de Dados Local
+                    Physician saved = repository.save(existing);
+
+                    // 3. RABBITMQ: Avisa as outras réplicas que houve um UPDATE
+                    producer.sendPhysicianUpdated(saved);
+
+                    return ResponseEntity.ok(saved);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -93,7 +117,16 @@ public class PhysicianController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!repository.existsById(id)) return ResponseEntity.notFound().build();
+
+        // physicianNumber necessário antes de apagar para avisar os outros
+        Physician p = repository.findById(id).get();
+
+        // 1. Apaga Localmente
         repository.deleteById(id);
+
+        // 2. Envia evento DELETED
+        producer.sendPhysicianDeleted(p.getPhysicianNumber());
+
         return ResponseEntity.noContent().build();
     }
 
@@ -101,7 +134,15 @@ public class PhysicianController {
     public ResponseEntity<Void> deleteByNumber(@PathVariable String physicianNumber) {
         var opt = repository.findByPhysicianNumber(physicianNumber);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
+        // 1. Apaga Localmente
         repository.delete(opt.get());
+
+        // 2. Envia evento DELETED
+        producer.sendPhysicianDeleted(physicianNumber);
+
         return ResponseEntity.noContent().build();
     }
+
+
 }
