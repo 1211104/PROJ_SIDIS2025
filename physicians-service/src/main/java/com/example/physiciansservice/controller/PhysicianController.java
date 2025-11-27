@@ -93,25 +93,42 @@ public class PhysicianController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/by-number/{physicianNumber}")
-    public ResponseEntity<Physician> updateByNumber(@PathVariable String physicianNumber,
-                                                    @RequestBody Physician body) {
+    @PatchMapping("/by-number/{physicianNumber}")
+    public ResponseEntity<Physician> patchByNumber(@PathVariable String physicianNumber,
+                                                   @RequestBody Physician body) {
         return repository.findByPhysicianNumber(physicianNumber)
                 .map(existing -> {
-                    // 1. Atualizar os campos com os dados novos
-                    existing.setName(body.getName());
-                    existing.setSpecialty(body.getSpecialty());
-                    existing.setContactInfo(body.getContactInfo());
+                    // --- CENÁRIO A: JÁ EXISTE ---
 
-                    // 2. Guardar na Base de Dados Local
+                    if (body.getName() != null) existing.setName(body.getName());
+                    if (body.getSpecialty() != null) existing.setSpecialty(body.getSpecialty());
+                    if (body.getContactInfo() != null) existing.setContactInfo(body.getContactInfo());
+
                     Physician saved = repository.save(existing);
 
-                    // 3. RABBITMQ: Avisa as outras réplicas que houve um UPDATE
+                    // Envia evento UPDATE
                     producer.sendPhysicianUpdated(saved);
 
                     return ResponseEntity.ok(saved);
                 })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    // --- CENÁRIO B: NÃO EXISTE (Lógica CREATE / UPSERT) ---
+
+                    Physician newPhysician = new Physician();
+                    newPhysician.setPhysicianNumber(physicianNumber);
+
+                    newPhysician.setName(body.getName());
+                    newPhysician.setSpecialty(body.getSpecialty());
+                    newPhysician.setContactInfo(body.getContactInfo());
+
+                    Physician saved = repository.save(newPhysician);
+
+                    // Envia evento CREATED
+                    producer.sendPhysicianCreated(saved);
+
+                    return ResponseEntity.created(URI.create("/api/physicians/by-number/" + saved.getPhysicianNumber()))
+                            .body(saved);
+                });
     }
 
     @DeleteMapping("/{id}")
