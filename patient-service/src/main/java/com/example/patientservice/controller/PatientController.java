@@ -1,125 +1,93 @@
 package com.example.patientservice.controller;
 
-import com.example.patientservice.replication.ReplicationService;
+import com.example.patientservice.event.PatientProducer;
 import com.example.patientservice.model.Patient;
 import com.example.patientservice.repository.PatientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.dao.DataIntegrityViolationException;
 
+import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/patients")
 public class PatientController {
 
-    private final PatientRepository patientRepository;
-    private final ReplicationService replicationService;
+    private final PatientRepository repository;
+    private final PatientProducer producer;
 
-
-    @Autowired
-    public PatientController(PatientRepository patientRepository, ReplicationService replicationService) {
-        this.patientRepository = patientRepository;
-        this.replicationService = replicationService;
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<?> createPatient(@RequestBody Patient patient) {
-
-        try {
-            Patient savedPatient = patientRepository.save(patient);
-
-            try {
-                replicationService.propagatePost(savedPatient);
-            } catch (Exception e) {
-                System.err.println("Falha ao replicar POST para peers: " + e.getMessage());
-            }
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedPatient);
-
-        } catch (DataIntegrityViolationException e) {
-            String errorMessage = "O número de paciente '" + patient.getPatientNumber() + "' já existe. A criação foi rejeitada.";
-            System.err.println(errorMessage);
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno inesperado: " + e.getMessage());
-        }
+    public PatientController(PatientRepository repository, PatientProducer producer) {
+        this.repository = repository;
+        this.producer = producer;
     }
 
     @GetMapping
-    public List<Patient> getAllPatients() {
-        return patientRepository.findAll();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
-        Optional<Patient> patient = patientRepository.findById(id);
-
-        return patient.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public List<Patient> getAll() {
+        return repository.findAll();
     }
 
     @GetMapping("/number/{patientNumber}")
-    public ResponseEntity<Patient> getPatientByNumber(@PathVariable String patientNumber) {
-        Patient patient = patientRepository.findByPatientNumber(patientNumber);
-
-        if (patient != null) {
-            return ResponseEntity.ok(patient);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Patient> getByNumber(@PathVariable String patientNumber) {
+        return repository.findByPatientNumber(patientNumber)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updatePatient(@PathVariable Long id, @RequestBody Patient patientDetails) {
-
-        try {
-            return patientRepository.findById(id)
-                    .map(patient -> {
-                        if (patientDetails.getName() != null) {
-                            patient.setName(patientDetails.getName());
-                        }
-                        if (patientDetails.getPhoneNumber() != null) {
-                            patient.setPhoneNumber(patientDetails.getPhoneNumber());
-                        }
-
-                        Patient updatedPatient = patientRepository.save(patient);
-
-                        try {
-                            replicationService.propagatePut(updatedPatient);
-                        } catch (Exception e) {
-                            System.err.println("Falha ao replicar PUT para peers: " + e.getMessage());
-                        }
-
-                        return ResponseEntity.ok(updatedPatient);
-                    })
-                    .orElseGet(() -> ResponseEntity.notFound().build());
-
-        } catch (DataIntegrityViolationException e) {
-            String errorMessage = "Violação de integridade de dados: valor único duplicado durante a atualização.";
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
+    @PostMapping
+    @Transactional
+    public ResponseEntity<?> create(@RequestBody Patient body) {
+        if (body.getPatientNumber() == null || body.getPatientNumber().isBlank()) {
+            return ResponseEntity.badRequest().body("patientNumber é obrigatório");
         }
+        if (repository.findByPatientNumber(body.getPatientNumber()).isPresent()) {
+            return ResponseEntity.status(409).body("patientNumber já existe");
+        }
+
+        Patient saved = repository.save(body);
+        producer.sendPatientCreated(saved);
+
+        return ResponseEntity.created(URI.create("/api/patients/number/" + saved.getPatientNumber()))
+                .body(saved);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
-        if (!patientRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
+    @PatchMapping("/number/{patientNumber}")
+    @Transactional
+    public ResponseEntity<Patient> patchByNumber(@PathVariable String patientNumber,
+                                                 @RequestBody Patient body) {
+        return repository.findByPatientNumber(patientNumber)
+                .map(existing -> {
+                    // Update
+                    if (body.getName() != null) existing.setName(body.getName());
+                    if (body.getPhoneNumber() != null) existing.setPhoneNumber(body.getPhoneNumber());
 
-        patientRepository.deleteById(id);
+                    Patient saved = repository.save(existing);
+                    producer.sendPatientUpdated(saved);
+                    return ResponseEntity.ok(saved);
+                })
+                .orElseGet(() -> {
+                    // Create (Upsert)
+                    Patient newP = new Patient();
+                    newP.setPatientNumber(patientNumber);
+                    newP.setName(body.getName());
+                    newP.setPhoneNumber(body.getPhoneNumber());
 
-        try {
-            replicationService.propagateDelete(id);
-        } catch (Exception e) {
-            System.err.println("Falha ao replicar DELETE para peers: " + e.getMessage());
-        }
+                    Patient saved = repository.save(newP);
+                    producer.sendPatientCreated(saved);
+
+                    return ResponseEntity.created(URI.create("/api/patients/number/" + saved.getPatientNumber()))
+                            .body(saved);
+                });
+    }
+
+    @DeleteMapping("/number/{patientNumber}")
+    @Transactional
+    public ResponseEntity<Void> deleteByNumber(@PathVariable String patientNumber) {
+        var opt = repository.findByPatientNumber(patientNumber);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
+        repository.delete(opt.get());
+        producer.sendPatientDeleted(patientNumber);
 
         return ResponseEntity.noContent().build();
     }
