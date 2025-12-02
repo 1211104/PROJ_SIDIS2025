@@ -1,0 +1,39 @@
+@startuml
+    Title ClinicDomainModel
+
+entity User {
+}
+
+entity Patient {
+}
+
+entity Physician {
+}
+
+entity Appointment {
+}
+
+entity AppointmentRecord {
+}
+
+entity AppointmentType {
+}
+
+entity Department {
+}
+
+entity Specialization {
+}
+
+' Relacionamentos
+User "1" --> "*"  Patient : "User can be \n pacient"
+User "1" --> "*"  Physician : "User can be \n Physician"
+Patient "1" --> "*" Appointment : Pacient places an Appointment
+Physician "1" --> "*" Appointment : Physician attends\n Appointments
+Appointment "1" --> "1" AppointmentRecord : "Appointment generates\n AppointmentRecord"
+Physician "*" --> "             1" Department : "Physicians has  Department"
+Physician "*" --> "             1" Specialization : "Physicians has\n Specialization"
+Appointment "1" --> "1" AppointmentType : "Appointment generates\n AppointmentType"
+
+
+@enduml

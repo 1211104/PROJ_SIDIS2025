@@ -1,0 +1,55 @@
+@startuml
+title C2 — HAP (Healthcare Administration Platform) — Container Diagram
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+
+Person(physician, "Physician", "A person that uses the system")
+Person(patient, "Patient", "A person that uses the system")
+Person(admin, "Administrator", "A person that uses the system")
+
+
+skinparam shadowing false
+
+System_Boundary(hap, "Healthcare Administration Platform") {
+
+  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Only entry point. Forwards all services.")
+  Container(discovery_server, "Discovery Server", "Eureka (8761)", "Registers all services. Knows where is everyone")
+
+
+  Container(physiansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
+  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
+  Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
+
+
+  ContainerDb(PatientsDB, "Patient DB", "H2 DB", "Stores pacient information")
+  ContainerDb(PhysiciansDB, "Physician DB", "H2 DB", "Stores physician information")
+  ContainerDb(AppointmentsDB, "Appointment DB", "H2 DB", "Stores appointment information")
+
+}
+
+physician -right-> api_gw : Uses\n [HTTP/REST] (JSON)
+patient -down-> api_gw : Uses\n [HTTP/REST] (JSON)
+admin -down-> api_gw : Uses\n [HTTP/REST] (JSON)
+
+
+Rel_Right(api_gw, discovery_server, "Registers and discovers services available", "HTTP")
+
+' Ligações entre containers (criação de appointment valida entidades)
+appointmentService --> physiansService : HTTP GET\n/api/physicians/by-number/{(physicianNumber)}
+appointmentService -up-> patientsService      : HTTP GET\n/api/patients/number/{(patientNumber)}
+
+' Persistência local
+patientsService --> PatientsDB : Reads from and writes to
+physiansService --> PhysiciansDB : Reads from and writes to
+appointmentService --> AppointmentsDB : Reads from and writes to
+
+
+Rel_Down(api_gw, physiansService, "Forwards requests", "HTTP/REST")
+Rel_Down(api_gw, patientsService, "Forwards requests", "HTTP/REST")
+Rel_Down(api_gw, appointmentService, "Forwards requests", "HTTP/REST")
+
+
+
+@enduml

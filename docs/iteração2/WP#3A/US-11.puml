@@ -1,0 +1,30 @@
+@startuml
+title Schedule Appointment - Sequence Diagram (Administrator)
+
+actor Administrator
+
+participant "Appointments Service" as Appointments
+participant "Physician Service" as Doctors
+participant "Patients Service" as Patients
+database "Appointments Database" as DB_Consultations
+database "Doctors Database" as DB_Doctors
+database "Patients Database" as DB_Patients
+
+Administrator -> Appointments : POST /appointments\n{patientId, doctorId, date, time, type}
+
+Appointments -> Patients : GET /patient/patientId
+Patients -> DB_Patients : SELECT * FROM patients WHERE id=patientId
+DB_Patients --> Patients : Patient data
+Patients --> Appointments : 200 OK\n(Patient details)
+
+Appointments -> Doctors : GET /doctors/{doctorId}
+Doctors -> DB_Doctors : SELECT * FROM doctors WHERE id=doctorId
+DB_Doctors --> Doctors : Doctor data
+Doctors --> Appointments : 200 OK\n(Doctor details)
+
+Appointments -> DB_Consultations : INSERT INTO consultations\n(patientId, doctorId, date, time, type, status="SCHEDULED")
+DB_Consultations --> Appointments : Confirmation (appointmentId)
+
+Appointments --> Administrator : 201 Created\n{appointmentId, patient, doctor, date, time, type, status="SCHEDULED"}
+
+@enduml

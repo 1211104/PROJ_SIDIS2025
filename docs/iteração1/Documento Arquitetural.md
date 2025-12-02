@@ -9,7 +9,7 @@ Com este documento é pretendido demonstrar os diagramas criados e explicar de f
 
 Com este diagrama pretende-se representar a comunicação entre os diferentes componentes.
 
-![Vista Física Nivel 1](Vista Física/VF1.svg)
+![Vista Física Nivel 1](Vista%20Físicaca/VF1.svg)
 
 - O AppointmentService é o único componente capaz de comunicar com outro tipo de componentes diferentes.
 - Caso algum dado relacionado com Patients ou Physicians seja adicionado no AppointmentService, este irá verificar se estes já existem nas databases dos respetivos serviços.
@@ -19,7 +19,7 @@ Com este diagrama pretende-se representar a comunicação entre os diferentes co
 
 Com este diagrama pretende-se representar a comunicação dos diferentes serviços com a API Gateway como também a relação do Controller destes serviços com a própria base de dados.
 
-![Vista Física Nivel 2](Vista Física/VF2.svg)
+![Vista Física Nivel 2](Vista%20Físicaca/VF2.svg)
 
 - Quando ocorrer um pedido HTTP/REST entre componentes, este pedido será direcionado à API Gateway.
 - Cada Serviço terá o seu Controller que será capaz de modificar a própria base de dados.
@@ -28,7 +28,7 @@ Com este diagrama pretende-se representar a comunicação dos diferentes serviç
 
 Com este diagrama pretende-se representar as comunicações realizadas quando estão a correr várias instancias de cada serviço.
 
-![Vista Física Nivel 3](Vista Física/VF3.svg)
+![Vista Física Nivel 3](Vista%20Físicaca/VF3.svg)
 
 - Sempre que se realizar um pedido HTTP/REST em qualquer instância de qualquer componente, esse pedido será encaminhado à API Gateway.
 - A API Gateway é responsável por enviar os pedidos às diferentes réplicas.

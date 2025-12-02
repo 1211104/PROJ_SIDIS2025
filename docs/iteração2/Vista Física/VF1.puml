@@ -1,0 +1,20 @@
+@startuml
+title VF1 — Interação de serviços
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam shadowing false
+
+System_Boundary(hap, "Healthcare Administration Platform") {
+
+  Container(physiciansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
+  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
+  Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
+
+}
+
+
+appointmentService --> physiciansService
+appointmentService --> patientsService
+
+@enduml

@@ -1,0 +1,36 @@
+@startuml C4 Deployment Diagram - With API Gateway
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title VF2 — Comunicação com a API Gateway e Controller/Database
+
+    Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway / Nginx", "Ponto de entrada central para roteamento de chamadas internas e externas.") {
+        Container(APIGateway, "API Gateway", "Router/Proxy", "Responsável por rotear chamadas do Appointment Service e externas.")
+    }
+
+    Deployment_Node(AppointmentServiceNode, "Appointment Service", "Spring Boot", "Ambiente do serviço de consultas.") {
+        Container(AppointmentController, "Appointment Controller", "REST API", "Expõe a API (/api/appointments).")
+        ContainerDb(AppointmentDB, "Appointment Database", "H2 In-Memory DB", "Armazena dados das consultas.")
+    }
+
+    Deployment_Node(PatientServiceNode, "Patient Service", "Spring Boot", "Ambiente do serviço de Pacients.") {
+        Container(PatientController, "Patient Controller", "REST API", "Expõe a API (/api/patients).")
+        ContainerDb(PatientDB, "Patient Database", "H2 In-Memory DB", "Armazena dados de Pacients.")
+    }
+
+    Deployment_Node(PhysicianServiceNode, "Physicians Service", "Spring Boot", "Ambiente de serviço de Physicians.") {
+        Container(PhysicianController, "Physician Controller", "REST API", "Expõe a API (/api/physicians).")
+        ContainerDb(PhysicianDB, "Physician Database", "H2 In-Memory DB", "Armazena dados Physicians.")
+    }
+
+Rel(PatientController, PatientDB, "Lê e Escreve", "JDBC")
+Rel(PhysicianController, PhysicianDB, "Lê e Escreve", "JDBC")
+Rel_Right(AppointmentController, AppointmentDB, "Lê e Escreve", "JDBC")
+
+Rel_Down(AppointmentServiceNode, APIGatewayNode, "", "HTTP/REST")
+
+Rel_Right(APIGatewayNode, PatientServiceNode, "Routing para Patient Service", "HTTP/REST")
+Rel_Down(APIGatewayNode, PhysicianServiceNode, "Routing para Physicians Service", "HTTP/REST")
+
+@enduml
