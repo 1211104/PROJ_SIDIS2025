@@ -2,8 +2,7 @@
 title C2 — HAP (Healthcare Administration Platform) — Container Diagram
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-
-
+LAYOUT_WITH_LEGEND()
 
 Person(physician, "Physician", "A person that uses the system")
 Person(patient, "Patient", "A person that uses the system")
@@ -14,13 +13,15 @@ skinparam shadowing false
 
 System_Boundary(hap, "Healthcare Administration Platform") {
 
-  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Only entry point. Forwards all services.")
+  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Only entry point. Performs JWT Validation and forwards requests.")
+  Container(authService, "Authentication Service", "JWT Tokens", "Creates JWT Validation Tokens.")
   Container(discovery_server, "Discovery Server", "Eureka (8761)", "Registers all services. Knows where is everyone")
+  Container(rabbitmq, "Message Broker", "RabbitMQ", "Handles asynchronous communication and event distribution.")
 
 
-  Container(physiansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
-  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
-  Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
+  Container(physiansService, "Physician Service", "Spring Cloud Gateway (8089)", "Handles physician management. Consumes/Produces messages.")
+  Container(patientsService, "Patient Service", "Spring Cloud Gateway (8089)", "Handles patient management. Consumes/Produces messages.")
+  Container(appointmentService, "Appointment Service", "Spring Cloud Gateway (8089)", "Handles appointment management. Consumes/Produces messages.")
 
 
   ContainerDb(PatientsDB, "Patient DB", "H2 DB", "Stores pacient information")
@@ -29,27 +30,26 @@ System_Boundary(hap, "Healthcare Administration Platform") {
 
 }
 
-physician -right-> api_gw : Uses\n [HTTP/REST] (JSON)
-patient -down-> api_gw : Uses\n [HTTP/REST] (JSON)
-admin -down-> api_gw : Uses\n [HTTP/REST] (JSON)
+Rel_Down(physician, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
+Rel_Down(patient, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
+Rel_Down(admin, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
+Rel_Right(authService, api_gw, "Creates JWT Validation Tokens","JWT Tokens")
 
-
+Rel_Down(api_gw, physiansService, "Forwards requests + JWT Token", "HTTP/REST")
+Rel_Down(api_gw, patientsService, "Forwards requests + JWT Token", "HTTP/REST")
+Rel_Down(api_gw, appointmentService, "Forwards requests + JWT Token", "HTTP/REST")
 Rel_Right(api_gw, discovery_server, "Registers and discovers services available", "HTTP")
 
-' Ligações entre containers (criação de appointment valida entidades)
-appointmentService --> physiansService : HTTP GET\n/api/physicians/by-number/{(physicianNumber)}
-appointmentService -up-> patientsService      : HTTP GET\n/api/patients/number/{(patientNumber)}
+Rel(appointmentService, rabbitmq, "Produces AppointmentCreated Event", "AMQP")
+Rel(physiansService, rabbitmq, "Produces PhysicianDataUpdated Event", "AMQP")
+Rel_Right(patientsService, rabbitmq, "Produces PatientDataUpdated Event", "AMQP")
 
-' Persistência local
+Rel(rabbitmq, patientsService, "Consumes events/Receives Commands", "AMQP")
+Rel(rabbitmq, physiansService, "Consumes events/Receives Commands", "AMQP")
+Rel(rabbitmq, appointmentService, "Consumes events/Receives Commands", "AMQP")
+
 patientsService --> PatientsDB : Reads from and writes to
 physiansService --> PhysiciansDB : Reads from and writes to
 appointmentService --> AppointmentsDB : Reads from and writes to
-
-
-Rel_Down(api_gw, physiansService, "Forwards requests", "HTTP/REST")
-Rel_Down(api_gw, patientsService, "Forwards requests", "HTTP/REST")
-Rel_Down(api_gw, appointmentService, "Forwards requests", "HTTP/REST")
-
-
 
 @enduml
