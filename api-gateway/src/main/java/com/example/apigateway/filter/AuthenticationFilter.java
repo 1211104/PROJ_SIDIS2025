@@ -24,7 +24,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return ((exchange, chain) -> {
-            // Verifica se a rota é protegida
+            // Verifica se a rota e protegida
             if (validator.isSecured.test(exchange.getRequest())) {
 
                 // Verifica se o Header Authorization existe
@@ -49,6 +49,18 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
                     exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
                     return exchange.getResponse().setComplete();
+                }
+
+
+                String role = jwtUtil.getRole(authHeader);
+
+                // Bloquear DELETE se não for ADMIN
+                if (exchange.getRequest().getMethod().name().equals("DELETE")) {
+                    if (!"ADMIN".equals(role)) {
+                        System.out.println("Acesso Negado: Apenas ADMIN pode apagar.");
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
                 }
             }
             return chain.filter(exchange);

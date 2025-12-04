@@ -4,6 +4,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -14,10 +16,19 @@ import java.util.Map;
 @Service
 public class AuthService {
 
-    public static final String SECRET = "3cfae65737c2f6643229a287219487d65672457636a287921387246537624536";
+    @Value("${app.jwt.secret}")
+    private String secret;
+
 
     public String generateToken(String userName) {
+        // Vai buscar o utilizador a BD para saber qual e o Role
+        com.example.authservice.model.UserCredential user = repository.findByUsername(userName)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado ao gerar token"));
+
+        // Adicionar o Role aos "Claims"
         Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole());
+
         return createToken(claims, userName);
     }
 
@@ -26,7 +37,7 @@ public class AuthService {
                 .setClaims(claims)
                 .setSubject(userName)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 Hora de validade
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -36,7 +47,23 @@ public class AuthService {
     }
 
     private Key getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    @Autowired
+    private com.example.authservice.repository.UserCredentialRepository repository;
+
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    public String saveUser(com.example.authservice.model.UserCredential credential) {
+        credential.setPassword(passwordEncoder.encode(credential.getPassword()));
+        // Se não tiver role, assume PATIENT
+        if (credential.getRole() == null) {
+            credential.setRole(com.example.authservice.model.UserRole.PATIENT);
+        }
+        repository.save(credential);
+        return "Utilizador adicionado ao sistema";
     }
 }

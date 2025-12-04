@@ -37,4 +37,9 @@ public class AuthController {
         service.validateToken(token);
         return "Token is valid";
     }
+
+    @PostMapping("/register")
+    public String addNewUser(@RequestBody com.example.authservice.model.UserCredential user) {
+        return service.saveUser(user);
+    }
 }

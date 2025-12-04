@@ -58,15 +58,15 @@ public class PhysicianController {
             return ResponseEntity.badRequest().body("physicianNumber é obrigatório");
         }
 
-        // 2. Validação de Duplicados (Apenas na BD Local)
+        // Validação de Duplicados (Apenas na BD Local)
         if (repository.findByPhysicianNumber(body.getPhysicianNumber()).isPresent()) {
             return ResponseEntity.status(409).body("physicianNumber já existe nesta instância");
         }
 
-        // 3. Gravar na Base de Dados Local (Persistência)
+        // Gravar na Base de Dados Local (Persistência)
         Physician saved = repository.save(body);
 
-        // 4. RABBITMQ: Avisa que foi criado um physician
+        // RABBITMQ: Avisa que foi criado um physician
         // Sincroniza a outra réplica e para o Appointment Service
         producer.sendPhysicianCreated(saved);
 
@@ -78,14 +78,14 @@ public class PhysicianController {
     public ResponseEntity<Physician> update(@PathVariable Long id, @RequestBody Physician newPhysician) {
         return repository.findById(id)
                 .map(existing -> {
-                    // 1. Atualiza Localmente
+                    // Atualiza Localmente
                     existing.setPhysicianNumber(newPhysician.getPhysicianNumber());
                     existing.setName(newPhysician.getName());
                     existing.setSpecialty(newPhysician.getSpecialty());
                     existing.setContactInfo(newPhysician.getContactInfo());
                     Physician saved = repository.save(existing);
 
-                    // 2. Envia evento UPDATED
+                    // Envia evento UPDATED
                     producer.sendPhysicianUpdated(saved);
 
                     return ResponseEntity.ok(saved);
@@ -135,13 +135,13 @@ public class PhysicianController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!repository.existsById(id)) return ResponseEntity.notFound().build();
 
-        // physicianNumber necessário antes de apagar para avisar os outros
+        // physicianNumber necessário antes de apagar
         Physician p = repository.findById(id).get();
 
-        // 1. Apaga Localmente
+        // Apaga Localmente
         repository.deleteById(id);
 
-        // 2. Envia evento DELETED
+        // Envia evento DELETED
         producer.sendPhysicianDeleted(p.getPhysicianNumber());
 
         return ResponseEntity.noContent().build();
@@ -152,10 +152,10 @@ public class PhysicianController {
         var opt = repository.findByPhysicianNumber(physicianNumber);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
 
-        // 1. Apaga Localmente
+        // Apaga Localmente
         repository.delete(opt.get());
 
-        // 2. Envia evento DELETED
+        // Envia evento DELETED
         producer.sendPhysicianDeleted(physicianNumber);
 
         return ResponseEntity.noContent().build();
