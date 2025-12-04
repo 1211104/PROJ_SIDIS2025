@@ -24,7 +24,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return ((exchange, chain) -> {
-            // Verifica se a rota é protegida
+            // Verifica se a rota e protegida
             if (validator.isSecured.test(exchange.getRequest())) {
 
                 // Verifica se o Header Authorization existe

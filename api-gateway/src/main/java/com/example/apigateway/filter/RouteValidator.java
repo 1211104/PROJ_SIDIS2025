@@ -8,10 +8,10 @@ import java.util.function.Predicate;
 @Component
 public class RouteValidator {
 
-    // Lista de endpoints que são PÚBLICOS (não precisam de token)
+    // Lista de endpoints que publicos
     public static final List<String> openApiEndpoints = List.of(
             "/auth/register",
-            "/auth/token",   // O endpoint de login tem de ser publico
+            "/auth/token",
             "/eureka"        // Endpoints do Eureka
     );
 

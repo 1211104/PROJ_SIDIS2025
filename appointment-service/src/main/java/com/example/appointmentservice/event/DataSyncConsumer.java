@@ -21,7 +21,7 @@ public class DataSyncConsumer {
         this.patientRepo = patientRepo;
     }
 
-    // --- OUVIR MÉDICOS ---
+    // OUVIR Physician
     @RabbitListener(queues = "#{physicianQueue.name}")
     public void handlePhysicianEvent(PhysicianEvent event) {
         logger.info("Recebido Evento Médico: {} - {}", event.getEventType(), event.getPhysicianNumber());
@@ -35,7 +35,7 @@ public class DataSyncConsumer {
         }
     }
 
-    // --- OUVIR PACIENTES ---
+    // OUVIR PACIENTS
     @RabbitListener(queues = "#{patientQueue.name}")
     public void handlePatientEvent(PatientEvent event) {
         logger.info("Recebido Evento Paciente: {} - {}", event.getEventType(), event.getPatientNumber());
