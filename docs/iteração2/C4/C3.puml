@@ -1,0 +1,53 @@
+@startuml
+title C3 — HAP (Healthcare Administration Platform) — Component Diagram for Appointment Service
+
+skinparam shadowing false
+skinparam rectangleBorderThickness 1
+skinparam databaseBorderThickness 1
+skinparam componentStyle rectangle
+
+skinparam rectangle {
+    BackgroundColor #85BBF0
+    BorderColor #438DD5
+    FontColor #000000
+}
+skinparam database {
+    BackgroundColor #61B329
+    BorderColor #000000
+}
+skinparam actor {
+    BackgroundColor #08427B
+    BorderColor #000000
+    FontColor #FFFFFF
+}
+
+
+rectangle "Physician Service" as physician_svc
+rectangle "Patient Service" as patient_svc
+
+
+frame "Appointment Service [container]" {
+
+    rectangle "AppointmentController\n[Spring REST Controller]\n\nReceives HTTP requests from the\nGateway and other peers." as controller
+    rectangle "SecurityConfig\n[Spring Security]\n\nSecures endpoints (e.g., /api/*)." as security
+    rectangle "AppointmentFanoutService\n[Spring Service]\n\nHandles business logic, validation,\nand P2P fan-out to peers." as fanout_service
+    rectangle "PeerClient\n[Spring Component]\n\nClient for making P2P calls\nto internal peer endpoints." as peer_client
+    rectangle "AppointmentRepository\n[Spring Data JPA Interface]\n\nAccesses the local Appointment DB." as repository
+    rectangle "RestTemplateConfig\n[Spring Configuration]\n\nCreates 'peerRest' and\n'externalRest' beans." as rest_config
+    database "Appointment DB" as appointment_db
+
+}
+
+controller -down-> fanout_service : "Uses"
+fanout_service -down-> repository : "Uses (local data)"
+fanout_service -down-> peer_client : "Uses (P2P fan-out)"
+security -right-> controller : "Secures"
+
+fanout_service -left-> rest_config : "Uses 'externalRest' bean"
+peer_client -up-> rest_config : "Uses 'peerRest' bean"
+
+repository -down-> appointment_db : "Reads from and writes to\n[JDBC]"
+fanout_service -right-> physician_svc : "Validates (via hard-coded URL)\n[HTTP GET]"
+fanout_service -right-> patient_svc : "Validates (via hard-coded URL)\n[HTTP GET]"
+
+@enduml

@@ -1,0 +1,69 @@
+@startuml C4 Deployment Diagram - With API Gateway
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title VF3 — Comunicação entre várias replicas dos serviços
+
+    Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway / Nginx", "Ponto de entrada central para roteamento de chamadas internas e externas.") {
+        Container(APIGateway, "API Gateway", "Router/Proxy", "Responsável por rotear chamadas do Appointment Service e externas.")
+    }
+
+    Deployment_Node(AppointmentServiceNodeA, "Appointment Service A", "Spring Boot", "Ambiente do serviço de consultas.") {
+        Container(AppointmentControllerA, "Appointment Controller A", "REST API", "Expõe a API (/api/appointments).")
+        ContainerDb(AppointmentDBA, "Appointment Database A", "H2 In-Memory DB", "Armazena dados das consultas.")
+    }
+
+    Deployment_Node(AppointmentServiceNodeB, "Appointment Service B", "Spring Boot", "Ambiente do serviço de consultas.") {
+        Container(AppointmentControllerB, "Appointment Controller B", "REST API", "Expõe a API (/api/appointments).")
+        ContainerDb(AppointmentDBB, "Appointment Database B", "H2 In-Memory DB", "Armazena dados das consultas.")
+    }
+
+    Deployment_Node(PatientServiceNodeA, "Patient Service 1", "Spring Boot", "Ambiente do serviço de Pacients.") {
+        Container(PatientControllerA, "Patient Controller 1", "REST API", "Expõe a API (/api/patients).")
+        ContainerDb(PatientDBA, "Patient Database 1", "H2 In-Memory DB", "Armazena dados de Pacients.")
+    }
+
+    Deployment_Node(PatientServiceNodeB, "Patient Service 2", "Spring Boot", "Ambiente do serviço de Pacients.") {
+            Container(PatientControllerB, "Patient Controller 2", "REST API", "Expõe a API (/api/patients).")
+            ContainerDb(PatientDBB, "Patient Database 2", "H2 In-Memory DB", "Armazena dados de Pacients.")
+    }
+
+    Deployment_Node(PhysicianServiceNodeA, "Physicians Service A", "Spring Boot", "Ambiente de serviço de Physicians.") {
+        Container(PhysicianControllerA, "Physician Controller A", "REST API", "Expõe a API (/api/physicians).")
+        ContainerDb(PhysicianDBA, "Physician Database A", "H2 In-Memory DB", "Armazena dados Physicians.")
+    }
+
+    Deployment_Node(PhysicianServiceNodeB, "Physicians Service B", "Spring Boot", "Ambiente de serviço de Physicians.") {
+            Container(PhysicianControllerB, "Physician Controller B", "REST API", "Expõe a API (/api/physicians).")
+            ContainerDb(PhysicianDBB, "Physician Database B", "H2 In-Memory DB", "Armazena dados Physicians.")
+    }
+
+Rel(PatientControllerA, PatientDBA, "Lê e Escreve", "JDBC")
+Rel(PatientControllerB, PatientDBB, "Lê e Escreve", "JDBC")
+
+Rel(PhysicianControllerA, PhysicianDBA, "Lê e Escreve", "JDBC")
+Rel(PhysicianControllerB, PhysicianDBB, "Lê e Escreve", "JDBC")
+
+Rel_Down(AppointmentControllerA, AppointmentDBA, "Lê e Escreve", "JDBC")
+Rel_Down(AppointmentControllerB, AppointmentDBB, "Lê e Escreve", "JDBC")
+
+Rel(APIGatewayNode, AppointmentServiceNodeA, "Realização de pedidos HTTP/REST de outras replicas.", "HTTP/REST")
+Rel(APIGatewayNode, AppointmentServiceNodeB, "Realização de pedidos HTTP/REST de outras replicas.", "HTTP/REST")
+
+Rel(AppointmentServiceNodeA, APIGatewayNode, "Realiza POST de dados inexistentes nos outros serviços.", "HTTP/REST")
+Rel(AppointmentServiceNodeB, APIGatewayNode, "Realiza POST de dados inexistentes nos outros serviços.", "HTTP/REST")
+
+Rel_Right(APIGatewayNode, PatientServiceNodeA, "Routing para Patient Service", "HTTP/REST")
+Rel_Right(APIGatewayNode, PatientServiceNodeB, "Routing para Patient Service", "HTTP/REST")
+
+Rel(PatientServiceNodeA, APIGatewayNode, "Realização de pedidos HTTP/REST para outras replicas.", "HTTP/REST")
+Rel(PatientServiceNodeB, APIGatewayNode, "Realização de pedidos HTTP/REST para outras replicas.", "HTTP/REST")
+
+Rel_Down(APIGatewayNode, PhysicianServiceNodeA, "Routing para Physicians Service", "HTTP/REST")
+Rel_Down(APIGatewayNode, PhysicianServiceNodeB, "Routing para Physicians Service", "HTTP/REST")
+
+Rel(PhysicianServiceNodeA, APIGatewayNode, "Realização de pedidos HTTP/REST para outras replicas.", "HTTP/REST")
+Rel(PhysicianServiceNodeB, APIGatewayNode, "Realização de pedidos HTTP/REST para outras replicas.", "HTTP/REST")
+
+@enduml
