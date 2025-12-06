@@ -15,15 +15,21 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.patients}")
     private String exchangeName;
 
+    @Value("${INSTANCE_ID:default}")
+    private String instanceId;
+
     @Bean
     public FanoutExchange patientExchange() {
         return new FanoutExchange(exchangeName);
     }
 
-    // Fila anónima para sincronização entre réplicas
+    // Fila anonima para sincronizacao entre replicas
     @Bean
     public Queue syncQueue() {
-        return new AnonymousQueue();
+
+        String queueName = "patient-sync-queue-" + instanceId;
+
+        return new Queue(queueName, true);
     }
 
     @Bean

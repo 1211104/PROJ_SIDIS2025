@@ -29,8 +29,8 @@ public class PhysicianProducer {
     }
 
     public void sendPhysicianDeleted(String physicianNumber) {
-        // Para apagar, necessário ID e do tipo de evento
-        PhysicianEvent event = new PhysicianEvent(physicianNumber, null, null, "DELETED");
+        // Para apagar, necessario ID e do tipo de evento
+        PhysicianEvent event = new PhysicianEvent(physicianNumber, null, null, null, "DELETED");
         logger.info("--> RabbitMQ: A enviar evento DELETED para {}", physicianNumber);
         rabbitTemplate.convertAndSend(exchangeName, "", event);
     }
@@ -40,6 +40,7 @@ public class PhysicianProducer {
                 p.getPhysicianNumber(),
                 p.getName(),
                 p.getSpecialty(),
+                p.getContactInfo(),
                 type
         );
         logger.info("--> RabbitMQ: A enviar evento {} para {}", type, p.getPhysicianNumber());

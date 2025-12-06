@@ -15,32 +15,37 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.physicians}")
     private String exchangeName;
 
-    // Cria a Exchange do tipo Fanout (Broadcast) automaticamente
+    // INJETAR O ID DA INSTÂNCIA (replicaA, replicaB)
+    // Se não estiver definido, usa "default"
+    @Value("${INSTANCE_ID:default}")
+    private String instanceId;
+
     @Bean
     public FanoutExchange physicianExchange() {
         return new FanoutExchange(exchangeName);
     }
 
-    // A fila única para cada instância
-    // Cada vez que uma instância (A ou B) arranca, cria uma fila nova só para si
     @Bean
     public Queue syncQueue() {
-        return new AnonymousQueue();
+
+        String queueName = "physician-sync-queue-" + instanceId;
+
+        // Durable (true): O RabbitMQ guarda a fila no disco, mesmo que ninguem esteja ligado
+        // Exclusive (false): false (para reconectar)
+        // AutoDelete (false): false (nao apagar quando desligado)
+        return new Queue(queueName, true, false, false);
     }
 
-    // Liga a fila única desta instância à Exchange Fanout
     @Bean
     public Binding binding(FanoutExchange exchange, Queue syncQueue) {
         return BindingBuilder.bind(syncQueue).to(exchange);
     }
 
-    // Conversor para enviar JSON
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // Template configurado com o conversor JSON
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);

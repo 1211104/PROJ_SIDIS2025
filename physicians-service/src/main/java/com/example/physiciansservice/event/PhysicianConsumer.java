@@ -19,7 +19,7 @@ public class PhysicianConsumer {
     }
 
     // Escuta a fila criada no RabbitMQConfig (syncQueue)
-    // A expressão SpEL "#{syncQueue.name}" encontra o nome aleatório gerado
+    // A expressao SpEL "#{syncQueue.name}" encontra o nome aleatorio gerado
     @RabbitListener(queues = "#{syncQueue.name}")
     public void receivePhysicianEvent(PhysicianEvent event) {
         logger.info("--> RabbitMQ: Recebi evento {} para {}", event.getEventType(), event.getPhysicianNumber());
@@ -45,6 +45,7 @@ public class PhysicianConsumer {
             newP.setPhysicianNumber(event.getPhysicianNumber());
             newP.setName(event.getName());
             newP.setSpecialty(event.getSpecialty());
+            newP.setContactInfo(event.getContactInfo());
             repository.save(newP);
             logger.info("SINC: Médico {} criado.", event.getPhysicianNumber());
         } else {
@@ -58,17 +59,19 @@ public class PhysicianConsumer {
                 p -> {
                     p.setName(event.getName());
                     p.setSpecialty(event.getSpecialty());
+                    p.setContactInfo(event.getContactInfo());
                     repository.save(p);
-                    logger.info("✅ SINC: Médico {} atualizado.", event.getPhysicianNumber());
+                    logger.info("SINC: Médico {} atualizado.", event.getPhysicianNumber());
                 },
                 () -> {
-                    // Se recebermos um UPDATE para algo que não temos, podemos criar (Upsert) ou ignorar
+                    // Se recebermos um UPDATE para algo que nao temos, podemos criar (Upsert) ou ignorar
                     Physician newP = new Physician();
                     newP.setPhysicianNumber(event.getPhysicianNumber());
                     newP.setName(event.getName());
                     newP.setSpecialty(event.getSpecialty());
+                    newP.setContactInfo(event.getContactInfo());
                     repository.save(newP);
-                    logger.info("⚠️ SINC: Médico {} não existia no Update. Criado agora.", event.getPhysicianNumber());
+                    logger.info("SINC: Médico {} não existia no Update. Criado agora.", event.getPhysicianNumber());
                 }
         );
     }

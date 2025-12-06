@@ -17,21 +17,28 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.patients}")
     private String patientExchangeName;
 
-    // Define as Exchanges
+    // INJETAR O ID DA INSTANCIA (Crucial para CQRS com DB local)
+    @Value("${INSTANCE_ID:default}")
+    private String instanceId;
+
     @Bean
     public FanoutExchange physicianExchange() { return new FanoutExchange(physicianExchangeName); }
 
     @Bean
     public FanoutExchange patientExchange() { return new FanoutExchange(patientExchangeName); }
 
-    // Filas Anónimas (Uma para cada service)
-    @Bean
-    public Queue physicianQueue() { return new AnonymousQueue(); }
 
     @Bean
-    public Queue patientQueue() { return new AnonymousQueue(); }
+    public Queue physicianQueue() {
+        return new Queue("appointment-physician-sync-queue-" + instanceId, true);
+    }
 
-    // Ligações (Bindings)
+    @Bean
+    public Queue patientQueue() {
+        return new Queue("appointment-patient-sync-queue-" + instanceId, true);
+    }
+
+    // Bindings
     @Bean
     public Binding bindPhysician(FanoutExchange physicianExchange, @Qualifier("physicianQueue") Queue q) {
         return BindingBuilder.bind(q).to(physicianExchange);
@@ -42,7 +49,6 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(q).to(patientExchange);
     }
 
-    // Conversor JSON
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();

@@ -3,17 +3,39 @@ package com.example.appointmentservice.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "external_physicians")
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class ExternalPhysician {
+
     @Id
-    private String physicianNumber; // PK
+    private String physicianNumber;
     private String name;
+
+
+    public ExternalPhysician() {
+    }
+
+
+    public ExternalPhysician(String physicianNumber, String name) {
+        this.physicianNumber = physicianNumber;
+        this.name = name;
+    }
+
+    // 3. Getters e Setters
+    public String getPhysicianNumber() {
+        return physicianNumber;
+    }
+
+    public void setPhysicianNumber(String physicianNumber) {
+        this.physicianNumber = physicianNumber;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }
