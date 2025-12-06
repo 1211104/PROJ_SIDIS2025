@@ -1,0 +1,32 @@
+@startuml
+skinparam backgroundColor #A9D0F5
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+
+' Direção principal do diagrama
+left to right direction
+
+rectangle "== ACME\n<<Context (C4)>>" as ACME {
+    rectangle "== Patients\n<<Container (C4)>>" as patients
+    rectangle "== Doctors\n<<Container (C4)>>" as doctors
+    rectangle "== Appointments\n<<Container (C4)>>" as appointments
+}
+
+' Criação das APIs HTTP na parte inferior
+[HTTP Patients API] as patientsAPI
+[HTTP Doctors API] as doctorsAPI
+[HTTP Appointments API] as appointmentsAPI
+
+' Ligações verticais para baixo
+patients -down-> patientsAPI
+doctors -down-> doctorsAPI
+appointments -down-> appointmentsAPI
+
+' Linhas invisíveis para alinhar horizontalmente os blocos
+patients -[hidden]-> doctors
+doctors -[hidden]-> appointments
+patientsAPI -[hidden]-> doctorsAPI
+doctorsAPI -[hidden]-> appointmentsAPI
+@enduml

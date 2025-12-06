@@ -1,21 +1,23 @@
 @startuml
-title US-13: As a Patient or Administrator, I want to update or cancel an appointment
+title US-13: Update or Cancel Appointment (with Patient/Physician Event Sync)
 
 actor User
-participant "AppointmentController (Appointments Service)" as Controller
+participant "AppointmentController" as Controller
 participant "JWTValidator" as JWT
 participant "AppointmentService" as Service
 participant "AppointmentRepository" as Repository
 participant "AppointmentMapper" as Mapper
 database "Appointments DB" as AppointmentsDB
 
-User -> Controller : PUT /appointments/{id} \nor\nDELETE /appointments/{id} + JWT
+participant "DataSyncConsumer" as Consumer
+participant "PhysicianEvent" as PhysicianEvent
+participant "PatientEvent" as PatientEvent
+
+User -> Controller : PUT/DELETE /appointments/{id} + JWT
 activate Controller
 
 Controller -> JWT : validateToken(JWT)
-activate JWT
-JWT --> Controller : 200 OK (role=PATIENT or ADMIN)
-deactivate JWT
+JWT --> Controller : 200 OK (ADMIN or PATIENT)
 
 alt Update Appointment
     Controller -> Service : updateAppointment(id, updateDTO)
@@ -25,35 +27,48 @@ end
 activate Service
 
 Service -> Repository : findById(id)
-activate Repository
-Repository -> AppointmentsDB : SELECT * FROM appointments WHERE id = ?
+Repository -> AppointmentsDB : SELECT * WHERE id = ?
 AppointmentsDB --> Repository : Appointment
-deactivate Repository
-
 Repository --> Service : Appointment
 
 alt Update Date/Time
-    Service -> Service : appointment.setDateTime(updateDTO.dateTime)
+    Service -> Service : appointment.setDateTime(...)
 else Cancel
     Service -> Service : appointment.setStatus("CANCELLED")
 end
 
 Service -> Repository : save(appointment)
-activate Repository
-Repository -> AppointmentsDB : UPDATE appointments SET ... WHERE id = ?
+Repository -> AppointmentsDB : UPDATE appointment...
 AppointmentsDB --> Repository : Appointment
-deactivate Repository
-
 Repository --> Service : Appointment
 Service --> Controller : Appointment
-deactivate Service
 
-Controller -> Mapper : toAppointmentView(Appointment)
-activate Mapper
+Controller -> Mapper : toAppointmentView
 Mapper --> Controller : AppointmentView
-deactivate Mapper
-
-Controller --> User : 200 OK\nAppointmentView
+Controller --> User : 200 OK + AppointmentView
 deactivate Controller
+
+
+PhysicianEvent -> Consumer : handlePhysicianEvent(event)
+activate Consumer
+
+alt EVENT_TYPE = DELETED
+    Consumer -> Repository : physicianRepo.deleteById(event.physicianNumber)
+else CREATED or UPDATED
+    Consumer -> Repository : physicianRepo.save(ExternalPhysician)
+end
+
+deactivate Consumer
+
+PatientEvent -> Consumer : handlePatientEvent(event)
+activate Consumer
+
+alt EVENT_TYPE = DELETED
+    Consumer -> Repository : patientRepo.deleteById(event.patientNumber)
+else CREATED or UPDATED
+    Consumer -> Repository : patientRepo.save(ExternalPatient)
+end
+
+deactivate Consumer
 
 @enduml

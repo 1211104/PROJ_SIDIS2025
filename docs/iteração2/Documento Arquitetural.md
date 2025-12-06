@@ -1,4 +1,4 @@
-# Documento Arquitetoral (Projeto SIDIS 1ª Iteração)
+# Documento Arquitetoral (Projeto SIDIS 2ª Iteração)
 
 Com este documento é pretendido demonstrar os diagramas criados e explicar de forma resumida o funcionamento do projeto.
 
@@ -23,6 +23,7 @@ Com este diagrama pretende-se representar a comunicação dos diferentes serviç
 
 - Quando ocorrer um pedido HTTP/REST entre componentes, este pedido será direcionado à API Gateway.
 - Cada Serviço terá o seu Controller que será capaz de modificar a própria base de dados.
+- Antes de qualquer ação irá ser necessário fazer a autenticação
 
 ### Vista Física Nível 3
 
@@ -63,5 +64,13 @@ complexo do sistema, pois além de gerir os seus próprios dados, é responsáve
 e agregar dados de outras réplicas de si mesmo (num modelo P2P).
 
 ![C3](C4/C3.svg)
+
+## AuthService- Novo serviço 
+Para esta iteração e após debate interno, a equipa de desenvolvimento decidiu incluir um quarto serviço neste caso de autenticação para facilitar esta ação, aqui cada utilizador tem a sua role atribuída (neste caso as roles existentes são Admin, Physician e Patient). Com esta separação o nível de segurança aumenta pois definimos o nível de acesso a informação que cada role tem, isto é por exemplo apenas admin e physician podem visualizar dados de outros pacientes, registos de consultas, entre outros. Informação sensível armazenada de forma mais segura
+
+## JWT
+A utilização de JWT (JSON Web Tokens) no projeto permite garantir um mecanismo de autenticação e autorização seguro, eficiente e totalmente desacoplado entre serviços. Como se trata de uma arquitetura baseada em microserviços, é essencial evitar dependências constantes ao Auth Service; o JWT resolve este problema ao encapsular de forma segura a identidade do utilizador, bem como as suas permissões, num token assinado digitalmente.
+Desta forma, cada serviço consegue validar autonomamente o token recebido — sem necessidade de chamadas adicionais — assegurando que apenas pedidos autenticados e autorizados são processados. Isto reduz latência, melhora a escalabilidade e evita pontos únicos de falha. Além disso, o JWT suporta mecanismos de expiração e revogação, permitindo reforçar a segurança contra acessos indevidos e reutilização de tokens expirados.
+Assim, o uso de JWT no projeto contribui para uma comunicação mais rápida, segura e consistente entre os diferentes serviços que compõem a solução.
 
 

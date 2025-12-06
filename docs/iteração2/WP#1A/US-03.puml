@@ -1,5 +1,5 @@
 @startuml
-title US-03: As an Administrator, I want to register a physician with details such as name, specialty, contact information, and working hours.
+title US-03: Register Physician workflow with Event, Producer and Consumer
 
 actor Administrator
 participant "PhysicianController" as controller
@@ -7,13 +7,24 @@ participant "JWTValidator" as jwt
 participant "PhysicianService" as service
 participant "PhysicianRepository" as repo
 
+participant "PhysicianEventProducer" as producer
+participant "PhysicianEvent" as event
+participant "PhysicianEventConsumer" as consumer
+
 Administrator -> controller : POST /physicians + JWT + physicianDTO
 controller -> jwt : validateToken(JWT)
 jwt --> controller : 200 OK (role=ADMIN)
 
 controller -> service : registerPhysician(physicianDTO)
 service -> repo : save(Physician)
-repo --> service : Physician (with ID)
+repo --> service : Physician(with ID)
+
+service -> producer : publishPhysicianRegisteredEvent(Physician)
+producer -> event : createEvent(Physician)
+
+event -> consumer : PhysicianRegisteredEvent
+consumer --> event : ACK
+
 service --> controller : PhysicianDTO (with ID)
 controller --> Administrator : 201 Created + PhysicianDTO
 @enduml
