@@ -15,9 +15,8 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.physicians}")
     private String exchangeName;
 
-    // INJETAR O ID DA INSTÂNCIA (replicaA, replicaB)
-    // Se não estiver definido, usa "default"
-    @Value("${INSTANCE_ID:default}")
+    // INJETAR O ID DA INSTANCIA (replicaA, replicaB)
+    @Value("${INSTANCE_ID}")
     private String instanceId;
 
     @Bean

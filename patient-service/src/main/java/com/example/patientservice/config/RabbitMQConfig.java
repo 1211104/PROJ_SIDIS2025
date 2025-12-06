@@ -15,7 +15,7 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.patients}")
     private String exchangeName;
 
-    @Value("${INSTANCE_ID:default}")
+    @Value("${INSTANCE_ID}")
     private String instanceId;
 
     @Bean

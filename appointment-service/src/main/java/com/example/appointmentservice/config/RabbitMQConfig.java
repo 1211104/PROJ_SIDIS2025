@@ -18,7 +18,7 @@ public class RabbitMQConfig {
     private String patientExchangeName;
 
     // INJETAR O ID DA INSTANCIA (Crucial para CQRS com DB local)
-    @Value("${INSTANCE_ID:default}")
+    @Value("${INSTANCE_ID}")
     private String instanceId;
 
     @Bean
