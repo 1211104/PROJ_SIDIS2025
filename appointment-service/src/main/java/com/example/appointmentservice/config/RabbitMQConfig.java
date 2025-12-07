@@ -17,6 +17,9 @@ public class RabbitMQConfig {
     @Value("${hap.rabbitmq.exchange.patients}")
     private String patientExchangeName;
 
+    @Value("${hap.rabbitmq.exchange.appointments:appointment-exchange}")
+    private String appointmentExchangeName;
+
     // INJETAR O ID DA INSTANCIA (Crucial para CQRS com DB local)
     @Value("${INSTANCE_ID}")
     private String instanceId;
@@ -26,6 +29,9 @@ public class RabbitMQConfig {
 
     @Bean
     public FanoutExchange patientExchange() { return new FanoutExchange(patientExchangeName); }
+
+    @Bean
+    public FanoutExchange appointmentExchange() { return new FanoutExchange(appointmentExchangeName); }
 
 
     @Bean
@@ -38,6 +44,11 @@ public class RabbitMQConfig {
         return new Queue("appointment-patient-sync-queue-" + instanceId, true);
     }
 
+    @Bean
+    public Queue appointmentSyncQueue() {
+        return new Queue("appointment-sync-queue-" + instanceId, true);
+    }
+
     // Bindings
     @Bean
     public Binding bindPhysician(FanoutExchange physicianExchange, @Qualifier("physicianQueue") Queue q) {
@@ -47,6 +58,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindPatient(FanoutExchange patientExchange, @Qualifier("patientQueue") Queue q) {
         return BindingBuilder.bind(q).to(patientExchange);
+    }
+
+    @Bean
+    public Binding bindAppointment(FanoutExchange appointmentExchange, @Qualifier("appointmentSyncQueue") Queue q) {
+        return BindingBuilder.bind(q).to(appointmentExchange);
     }
 
     @Bean

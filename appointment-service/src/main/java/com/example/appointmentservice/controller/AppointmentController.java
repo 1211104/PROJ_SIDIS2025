@@ -1,5 +1,6 @@
 package com.example.appointmentservice.controller;
 
+import com.example.appointmentservice.event.AppointmentProducer;
 import com.example.appointmentservice.model.Appointment;
 import com.example.appointmentservice.model.AppointmentStatus;
 import com.example.appointmentservice.model.ConsultationType;
@@ -21,17 +22,19 @@ import java.util.Optional;
 public class AppointmentController {
 
     private final AppointmentRepository appointmentRepo;
-
-    // Repositórios CQRS (Tabelas de Leitura locais)
     private final ExternalPhysicianRepository physicianRepo;
     private final ExternalPatientRepository patientRepo;
 
+    private final AppointmentProducer appointmentProducer;
+
     public AppointmentController(AppointmentRepository appointmentRepo,
                                  ExternalPhysicianRepository physicianRepo,
-                                 ExternalPatientRepository patientRepo) {
+                                 ExternalPatientRepository patientRepo,
+                                 AppointmentProducer appointmentProducer) {
         this.appointmentRepo = appointmentRepo;
         this.physicianRepo = physicianRepo;
         this.patientRepo = patientRepo;
+        this.appointmentProducer = appointmentProducer;
     }
 
     // ==========================================
@@ -41,7 +44,6 @@ public class AppointmentController {
     @GetMapping
     public List<Appointment> search(@RequestParam(required = false) String physician,
                                     @RequestParam(required = false) String patient) {
-        // Pesquisa simples na BD local
         if (physician != null && !physician.isBlank())
             return appointmentRepo.findByPhysicianNumber(physician, Pageable.unpaged()).getContent();
         if (patient != null && !patient.isBlank())
@@ -58,13 +60,13 @@ public class AppointmentController {
     }
 
     // ==========================================
-    // ESCRITAS (Validação Local via CQRS)
+    // ESCRITAS (Validacao Local via CQRS)
     // ==========================================
 
     @PostMapping
     @Transactional
     public ResponseEntity<?> create(@RequestBody Appointment body) {
-        // Validações Básicas
+        // Validacoes Basicas
         if (body.getAppointmentNumber() == null || body.getAppointmentNumber().isBlank())
             return ResponseEntity.badRequest().body("appointmentNumber é obrigatório");
         if (body.getPhysicianNumber() == null || body.getPhysicianNumber().isBlank())
@@ -76,9 +78,7 @@ public class AppointmentController {
         if (appointmentRepo.findByAppointmentNumber(body.getAppointmentNumber()).isPresent())
             return ResponseEntity.status(409).body("appointmentNumber já existe");
 
-        // VALIDAÇÃO CQRS
-        // Verifica nas tabelas locais se os dados existem (sincronizados via RabbitMQ)
-
+        // VALIDACAO CQRS
         if (!physicianRepo.existsById(body.getPhysicianNumber())) {
             return ResponseEntity.status(404).body("physicianNumber inexistente (ou ainda não sincronizado)");
         }
@@ -92,7 +92,11 @@ public class AppointmentController {
         if (body.getConsultationType() == null) body.setConsultationType(ConsultationType.IN_PERSON);
         if (body.getStartTime() == null) body.setStartTime(LocalDateTime.now());
 
+        // Grava na BD Local
         Appointment saved = appointmentRepo.save(body);
+
+        // ENVIA O EVENTO PARA O RABBITMQ
+        appointmentProducer.sendAppointmentCreated(saved);
 
         return ResponseEntity.created(URI.create("/api/appointments/by-number/" + saved.getAppointmentNumber()))
                 .body(saved);
@@ -106,6 +110,7 @@ public class AppointmentController {
             return ResponseEntity.notFound().build();
         }
         appointmentRepo.delete(found.get());
+
         return ResponseEntity.noContent().build();
     }
 
@@ -114,14 +119,12 @@ public class AppointmentController {
     public ResponseEntity<?> patchByNumber(@PathVariable String appointmentNumber,
                                            @RequestBody com.example.appointmentservice.repository.AppointmentPatchRequest patch) {
 
-        // Verifica se a marcação existe
         Optional<Appointment> opt = appointmentRepo.findByAppointmentNumber(appointmentNumber);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         Appointment appointment = opt.get();
 
-        // Se estamos a tentar mudar o Physician, verifica se o NOVO Physician existe na tabela local
         if (patch.getPhysicianNumber() != null) {
             if (!physicianRepo.existsById(patch.getPhysicianNumber())) {
                 return ResponseEntity.status(404).body("Novo physicianNumber inexistente (ou não sincronizado)");
@@ -129,7 +132,6 @@ public class AppointmentController {
             appointment.setPhysicianNumber(patch.getPhysicianNumber());
         }
 
-        // Se estamos a tentar mudar o Pacient, verifica na tabela local
         if (patch.getPatientNumber() != null) {
             if (!patientRepo.existsById(patch.getPatientNumber())) {
                 return ResponseEntity.status(404).body("Novo patientNumber inexistente (ou não sincronizado)");
@@ -137,12 +139,10 @@ public class AppointmentController {
             appointment.setPatientNumber(patch.getPatientNumber());
         }
 
-        // Atualiza os restantes campos (só se não forem nulos)
         if (patch.getConsultationType() != null) appointment.setConsultationType(patch.getConsultationType());
         if (patch.getStatus() != null) appointment.setStatus(patch.getStatus());
         if (patch.getStartTime() != null) appointment.setStartTime(patch.getStartTime());
         if (patch.getEndTime() != null) appointment.setEndTime(patch.getEndTime());
-
 
         Appointment saved = appointmentRepo.save(appointment);
 
