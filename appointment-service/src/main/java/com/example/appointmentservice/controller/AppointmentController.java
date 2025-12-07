@@ -111,6 +111,8 @@ public class AppointmentController {
         }
         appointmentRepo.delete(found.get());
 
+        appointmentProducer.sendAppointmentDeleted(appointmentNumber);
+
         return ResponseEntity.noContent().build();
     }
 

@@ -30,4 +30,12 @@ public class AppointmentProducer {
         );
         rabbitTemplate.convertAndSend(exchangeName, "", event);
     }
+
+    public void sendAppointmentDeleted(String appointmentNumber) {
+        AppointmentEvent event = new AppointmentEvent();
+        event.setAppointmentNumber(appointmentNumber);
+        event.setEventType("DELETED");
+
+        rabbitTemplate.convertAndSend(exchangeName, "", event);
+    }
 }

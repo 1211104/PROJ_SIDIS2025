@@ -40,5 +40,14 @@ public class AppointmentSyncConsumer {
                 logger.info("SINC: Appointment {} guardado localmente.", event.getAppointmentNumber());
             }
         }
+        else if ("DELETED".equals(event.getEventType())) {
+            repository.findByAppointmentNumber(event.getAppointmentNumber()).ifPresentOrElse(
+                    app -> {
+                        repository.delete(app);
+                        logger.info("SINC: Appointment {} eliminado localmente por evento externo.", event.getAppointmentNumber());
+                    },
+                    () -> logger.warn("SINC: Tentativa de apagar Appointment {} que não existe localmente.", event.getAppointmentNumber())
+            );
+        }
     }
 }

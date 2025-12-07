@@ -16,10 +16,12 @@ public class PhysicianController {
 
     private final PhysicianRepository repository;
     private final PhysicianProducer producer;
+    private final PhysicianProducer physicianProducer;
 
-    public PhysicianController(PhysicianRepository repository, PhysicianProducer producer) {
+    public PhysicianController(PhysicianRepository repository, PhysicianProducer producer, PhysicianProducer physicianProducer) {
         this.repository = repository;
         this.producer = producer;
+        this.physicianProducer = physicianProducer;
     }
 
 
