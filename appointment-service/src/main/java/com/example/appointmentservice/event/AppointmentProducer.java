@@ -38,4 +38,18 @@ public class AppointmentProducer {
 
         rabbitTemplate.convertAndSend(exchangeName, "", event);
     }
+
+    public void sendAppointmentUpdated(Appointment app) {
+        AppointmentEvent event = new AppointmentEvent(
+                app.getAppointmentNumber(),
+                app.getPhysicianNumber(),
+                app.getPatientNumber(),
+                app.getStartTime(),
+                app.getEndTime(),
+                app.getStatus().name(),
+                app.getConsultationType().name(),
+                "UPDATED"
+        );
+        rabbitTemplate.convertAndSend(exchangeName, "", event);
+    }
 }

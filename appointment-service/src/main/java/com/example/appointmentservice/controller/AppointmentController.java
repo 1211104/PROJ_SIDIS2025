@@ -148,6 +148,8 @@ public class AppointmentController {
 
         Appointment saved = appointmentRepo.save(appointment);
 
+        appointmentProducer.sendAppointmentUpdated(saved);
+
         return ResponseEntity.ok(saved);
     }
 }

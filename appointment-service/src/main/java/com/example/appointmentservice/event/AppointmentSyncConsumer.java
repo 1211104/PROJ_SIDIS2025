@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class AppointmentSyncConsumer {
 
@@ -19,35 +21,47 @@ public class AppointmentSyncConsumer {
         this.repository = repository;
     }
 
-    // Ouve a fila de sync de appointments da réplica
     @RabbitListener(queues = "#{appointmentSyncQueue.name}")
     public void receiveAppointmentEvent(AppointmentEvent event) {
-        logger.info("--> RabbitMQ: Recebi Appointment {} do tipo {}", event.getAppointmentNumber(), event.getEventType());
+        logger.info("--> RabbitMQ [Sync]: Recebi Appointment {} Tipo: {}", event.getAppointmentNumber(), event.getEventType());
 
-        if ("CREATED".equals(event.getEventType())) {
-            if (repository.findByAppointmentNumber(event.getAppointmentNumber()).isEmpty()) {
-                Appointment app = new Appointment();
+        // CREATE e UPDATE (Upsert)
+        if ("CREATED".equals(event.getEventType()) || "UPDATED".equals(event.getEventType())) {
+
+            // Tenta encontrar o existente para obter o ID interno
+            Optional<Appointment> existing = repository.findByAppointmentNumber(event.getAppointmentNumber());
+
+            Appointment app;
+            if (existing.isPresent()) {
+                // MODO UPDATE: Usamos o objeto carregado da BD
+                app = existing.get();
+                logger.info("SINC: Atualizando registo existente {}", event.getAppointmentNumber());
+            } else {
+                app = new Appointment();
                 app.setAppointmentNumber(event.getAppointmentNumber());
-                app.setPhysicianNumber(event.getPhysicianNumber());
-                app.setPatientNumber(event.getPatientNumber());
-                app.setStartTime(event.getStartTime());
-                app.setEndTime(event.getEndTime());
+                logger.info("SINC: Criando novo registo {}", event.getAppointmentNumber());
+            }
 
+            // Atualiza TODOS os campos
+            app.setPhysicianNumber(event.getPhysicianNumber());
+            app.setPatientNumber(event.getPatientNumber());
+            app.setStartTime(event.getStartTime());
+            app.setEndTime(event.getEndTime());
+
+            if (event.getStatus() != null)
                 app.setStatus(AppointmentStatus.valueOf(event.getStatus()));
+
+            if (event.getConsultationType() != null)
                 app.setConsultationType(ConsultationType.valueOf(event.getConsultationType()));
 
-                repository.save(app);
-                logger.info("SINC: Appointment {} guardado localmente.", event.getAppointmentNumber());
-            }
-        }
-        else if ("DELETED".equals(event.getEventType())) {
-            repository.findByAppointmentNumber(event.getAppointmentNumber()).ifPresentOrElse(
-                    app -> {
-                        repository.delete(app);
-                        logger.info("SINC: Appointment {} eliminado localmente por evento externo.", event.getAppointmentNumber());
-                    },
-                    () -> logger.warn("SINC: Tentativa de apagar Appointment {} que não existe localmente.", event.getAppointmentNumber())
-            );
+            repository.save(app);
+            logger.info("SINC: Dados persistidos com sucesso.");
+
+        } else if ("DELETED".equals(event.getEventType())) {
+            repository.findByAppointmentNumber(event.getAppointmentNumber()).ifPresent(app -> {
+                repository.delete(app);
+                logger.info("SINC: Appointment {} eliminado.", event.getAppointmentNumber());
+            });
         }
     }
 }
