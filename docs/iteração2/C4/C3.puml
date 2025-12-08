@@ -1,49 +1,85 @@
 @startuml
-title C3 — HAP (Healthcare Administration Platform) — Component Diagram for Appointment Service
+title C3 — Appointment Service — Component Diagram
 
+' --- ESTILOS VISUAIS (CLEAN) ---
 skinparam shadowing false
-skinparam rectangleBorderThickness 1
-skinparam databaseBorderThickness 1
 skinparam componentStyle rectangle
+skinparam linetype ortho ' Linhas retas (menos confusão visual)
 
-skinparam rectangle {
-    BackgroundColor #85BBF0
-    BorderColor #438DD5
-    FontColor #000000
+skinparam package {
+    BackgroundColor #F9F9F9
+    BorderColor #999999
+    FontColor #666666
 }
+
+skinparam component {
+    BackgroundColor #E6F2FF
+    BorderColor #08427B
+    FontColor #000000
+    FontSize 13
+}
+
 skinparam database {
     BackgroundColor #61B329
-    BorderColor #000000
-}
-skinparam actor {
-    BackgroundColor #08427B
     BorderColor #000000
     FontColor #FFFFFF
 }
 
+' --- SISTEMAS EXTERNOS ---
+component "API Gateway" as gateway #DDDDDD
+component "RabbitMQ Broker" as rabbitmq #FFD699
 
-rectangle "Physician Service" as physician_svc
-rectangle "Patient Service" as patient_svc
-rectangle "RabbitMQConfig\n[Spring Configuration]\n\nDefines data flux and Bindings." as rabbitmq_config
-rectangle "Authentication Service\n[JWT Validation]\n\nCreates JWT Tokens for Instance Validation." as jwt
+package "Appointment Service Container" {
 
+    ' 1. CAMADA DE ENTRADA (CONTROLLER)
+    package "Web Layer" {
+        component "AppointmentController" as controller
+        component "SecurityConfig" as security
+    }
 
-frame "Appointment Service [container]" {
+    ' 2. CAMADA DE NEGÓCIO (CORE)
+    package "Business Layer" {
+        component "AppointmentService" as service
+    }
 
-    rectangle "AppointmentController\n[Spring REST Controller]\n\nReceives HTTP requests from the\nGateway and other peers." as controller
-    rectangle "SecurityConfig\n[Spring Security]\n\nSecures endpoints (e.g., /api/*)." as security
-    rectangle "AppointmentRepository\n[Spring Data JPA Interface]\n\nAccesses the local Appointment DB." as repository
-    database "Appointment DB" as appointment_db
+    ' 3. CAMADA DE MENSAGENS (EVENTOS)
+    package "Messaging Layer" {
+        component "AppointmentProducer\n(Envia Eventos)" as producer
+        component "DataSyncConsumer\n(Recebe Dados)" as consumer
+    }
 
+    ' 4. CAMADA DE DADOS (REPOSITÓRIOS)
+    package "Data Access Layer (CQRS)" {
+        component "AppointmentRepository" as app_repo
+        component "ExtPhysicianRepository" as phys_repo
+        component "ExtPatientRepository" as pat_repo
+    }
+
+    database "H2 Database" as db
 }
 
-controller -down-> repository : "Uses Repository"
-security -right-> controller : "Secures"
-repository -down-> appointment_db : "Reads from and writes to\n[JDBC]"
+' --- FLUXO PRINCIPAL (SÍNCRONO) ---
+gateway .down.> security : HTTP
+security -right-> controller : Secures
+controller -down-> service : Calls Logic
 
-controller -right-> rabbitmq_config : "To update Patient and Physician Service data\n[Message Broker]"
-rabbitmq_config -down-> patient_svc : "Patient Event from\n Appointment Service"
-rabbitmq_config -down-> physician_svc : "Physician Event from\n Appointment Service"
-jwt -left-> controller : "Creates JWT Token for Appointment Service"
+' --- LÓGICA DE NEGÓCIO ---
+service -down-> app_repo : Persist App
+service -down-> phys_repo : Validate Physician
+service -down-> pat_repo : Validate Patient
+service -right-> producer : Trigger Event
+
+' --- FLUXO ASSÍNCRONO (MENSAGENS) ---
+producer .right.> rabbitmq : Publish
+rabbitmq .left.> consumer : Consume
+
+' --- SINCRONIZAÇÃO DE DADOS (SYNC) ---
+consumer -down-> phys_repo : Save Replica
+consumer -down-> pat_repo : Save Replica
+
+' --- LIGAÇÃO À BD ---
+app_repo -down-> db : SQL
+phys_repo -down-> db
+pat_repo -down-> db
 
 @enduml

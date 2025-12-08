@@ -1,65 +1,78 @@
 @startuml
-title C2 — HAP (Healthcare Administration Platform) — Container Diagram (com NGINX)
+title C2 — HAP (Healthcare Administration Platform) — Container Diagram
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
 
+' --- ATORES ---
 Person(physician, "Physician", "A person that uses the system")
 Person(patient, "Patient", "A person that uses the system")
 Person(admin, "Administrator", "A person that uses the system")
 
 skinparam shadowing false
 
-
+' --- EXTERNO ---
 Container_Ext(nginx, "Nginx Reverse Proxy", "Nginx", "Receives all external traffic and forwards it to the API Gateway.")
-
 
 System_Boundary(hap, "Healthcare Administration Platform") {
 
-  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Main entry point. Performs JWT validation and forwards requests.")
-  Container(authService, "Authentication Service", "JWT Tokens", "Creates JWT Validation Tokens.")
-  Container(discovery_server, "Discovery Server", "Eureka (8761)", "Registers all services. Knows where each service is located.")
+  ' --- INFRAESTRUTURA ---
+  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089/8090)", "Main entry point. Performs JWT validation and forwards requests.")
+  Container(discovery_server, "Discovery Server", "Eureka (8761)", "Service Registry. Knows where each service is located.")
   Container(rabbitmq, "Message Broker", "RabbitMQ", "Handles asynchronous communication and event distribution.")
 
-  Container(physiansService, "Physician Service", "Spring Boot", "Handles physician management. Consumes/Produces messages.")
-  Container(patientsService, "Patient Service", "Spring Boot", "Handles patient management. Consumes/Produces messages.")
-  Container(appointmentService, "Appointment Service", "Spring Boot", "Handles appointment management. Consumes/Produces messages.")
+  ' --- AUTHENTICATION ---
+  Container(authService, "Auth Service", "Spring Boot", "Handles Login & Registration. Issues JWT Tokens.")
+  ContainerDb(AuthDB, "Auth DB", "PostgreSQL", "Stores users, roles and credentials.")
 
+  ' --- BUSINESS SERVICES ---
+  Container(physiansService, "Physician Service", "Spring Boot", "Handles physician management.")
+  Container(patientsService, "Patient Service", "Spring Boot", "Handles patient management.")
+  Container(appointmentService, "Appointment Service", "Spring Boot", "Handles appointment management (CQRS).")
+
+  ' --- DATABASES ---
   ContainerDb(PatientsDB, "Patient DB", "H2 DB", "Stores patient information")
   ContainerDb(PhysiciansDB, "Physician DB", "H2 DB", "Stores physician information")
   ContainerDb(AppointmentsDB, "Appointment DB", "H2 DB", "Stores appointment information")
 
 }
 
-
-Rel(physician, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
-Rel(patient, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
-Rel(admin, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
-
+' --- RELAÇÕES DE ENTRADA ---
+Rel(physician, nginx, "Uses system (HTTPS)", "JSON")
+Rel(patient, nginx, "Uses system (HTTPS)", "JSON")
+Rel(admin, nginx, "Uses system (HTTPS)", "JSON")
 
 Rel(nginx, api_gw, "Forwards external requests", "HTTP/REST")
 
+' --- RELAÇÕES DE ROTEAMENTO (GATEWAY) ---
+Rel_Right(api_gw, authService, "Routes /auth requests", "HTTP/REST")
+Rel_Down(api_gw, physiansService, "Routes API requests + JWT", "HTTP/REST")
+Rel_Down(api_gw, patientsService, "Routes API requests + JWT", "HTTP/REST")
+Rel_Down(api_gw, appointmentService, "Routes API requests + JWT", "HTTP/REST")
 
-Rel_Right(authService, api_gw, "Creates JWT Validation Tokens", "JWT Tokens")
+' --- RELAÇÕES DE BASE DE DADOS ---
+Rel(authService, AuthDB, "Reads/Writes", "JDBC")
+Rel(patientsService, PatientsDB, "Reads/Writes", "JDBC")
+Rel(physiansService, PhysiciansDB, "Reads/Writes", "JDBC")
+Rel(appointmentService, AppointmentsDB, "Reads/Writes", "JDBC")
 
-Rel_Down(api_gw, physiansService, "Forwards requests + JWT Token", "HTTP/REST")
-Rel_Down(api_gw, patientsService, "Forwards requests + JWT Token", "HTTP/REST")
-Rel_Down(api_gw, appointmentService, "Forwards requests + JWT Token", "HTTP/REST")
+' --- RELAÇÕES ASSÍNCRONAS (RABBITMQ) ---
+' Quem envia
+Rel(appointmentService, rabbitmq, "Publishes Events", "AMQP")
+Rel(physiansService, rabbitmq, "Publishes Events", "AMQP")
+Rel_Right(patientsService, rabbitmq, "Publishes Events", "AMQP")
 
-Rel_Right(api_gw, discovery_server, "Service registration and discovery", "HTTP")
+' Quem recebe (CQRS e Sync)
+Rel(rabbitmq, patientsService, "Syncs Replicas", "AMQP")
+Rel(rabbitmq, physiansService, "Syncs Replicas", "AMQP")
+Rel(rabbitmq, appointmentService, "Syncs Data (CQRS) & Replicas", "AMQP")
 
-
-Rel(appointmentService, rabbitmq, "Produces AppointmentCreated Event", "AMQP")
-Rel(physiansService, rabbitmq, "Produces PhysicianDataUpdated Event", "AMQP")
-Rel_Right(patientsService, rabbitmq, "Produces PatientDataUpdated Event", "AMQP")
-
-Rel(rabbitmq, patientsService, "Consumes events / Receives Commands", "AMQP")
-Rel(rabbitmq, physiansService, "Consumes events / Receives Commands", "AMQP")
-Rel(rabbitmq, appointmentService, "Consumes events / Receives Commands", "AMQP")
-
-
-patientsService --> PatientsDB : Reads and writes
-physiansService --> PhysiciansDB : Reads and writes
-appointmentService --> AppointmentsDB : Reads and writes
+' --- SERVICE DISCOVERY (REGISTO) ---
+' Linhas a cinzento para não poluir
+Rel_Left(authService, discovery_server, "Registers", "HTTP")
+Rel_Up(api_gw, discovery_server, "Registers & Discovers", "HTTP")
+Rel_Up(physiansService, discovery_server, "Registers", "HTTP")
+Rel_Up(patientsService, discovery_server, "Registers", "HTTP")
+Rel_Up(appointmentService, discovery_server, "Registers", "HTTP")
 
 @enduml
