@@ -1,26 +1,47 @@
 @startuml
-title VF1
+title VF1 - Interação de Serviços
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 skinparam shadowing false
 
-System_Ext(nginx, "Nginx", "Reverse Proxy / Load Balancer")
+' --- SISTEMA EXTERNO ---
+System_Ext(nginx, "Nginx", "Reverse Proxy / Load Balancer (Port 80)")
 
+' --- BOUNDARY DO SISTEMA ---
 System_Boundary(hap, "Healthcare Administration Platform") {
 
-  Container(physiciansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
-  Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
-  Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
-  Container(apigateway, "APIGateway", "Java/Spring Boot (8080)", "Routes requests")
-  Container(authService, "Auth Service", "Java/Spring Boot (8090)", "Handles authorization and role management")
+  ' Componentes de Infraestrutura
+  Container(apigateway, "API Gateway Cluster", "Java/Spring Boot (8089/8090)", "Routes requests & Validates JWT (Stateless)")
+  Container(authService, "Auth Service Cluster", "Java/Spring Boot (Scale via Postgres)", "Handles authentication & Token generation")
+
+  ' O Coração Assíncrono
+  ContainerQueue(rabbitmq, "Message Broker", "RabbitMQ", "Handles asynchronous event distribution")
+
+  ' Serviços de Negócio
+  Container(physiciansService, "Physician Service", "Java/Spring Boot", "Manage Physicians & Publishes Events")
+  Container(patientsService, "Patient Service", "Java/Spring Boot", "Manage Patients & Publishes Events")
+  Container(appointmentService, "Appointment Service", "Java/Spring Boot", "Manage Appointments & Consumes Data (CQRS)")
 
 }
 
-nginx --> apigateway : Forwards client requests
-appointmentService --> physiciansService
-appointmentService --> patientsService
-apigateway --> authService
-authService --> appointmentService
+' --- RELAÇÕES SÍNCRONAS (HTTP) ---
+Rel(nginx, apigateway, "Forwards client requests", "HTTP")
+
+Rel(apigateway, authService, "Routes Auth requests", "HTTP/REST")
+Rel(apigateway, physiciansService, "Routes API requests", "HTTP/REST")
+Rel(apigateway, patientsService, "Routes API requests", "HTTP/REST")
+Rel(apigateway, appointmentService, "Routes API requests", "HTTP/REST")
+
+' --- RELAÇÕES ASSÍNCRONAS (MESSAGING / RABBITMQ) ---
+' 1. Publishers (Quem envia dados)
+Rel_D(physiciansService, rabbitmq, "Publishes Physician Events", "AMQP")
+Rel_D(patientsService, rabbitmq, "Publishes Patient Events", "AMQP")
+Rel_D(appointmentService, rabbitmq, "Publishes Appointment Events", "AMQP")
+
+' 2. Consumers (Quem lê dados para CQRS ou Sync)
+Rel_U(rabbitmq, appointmentService, "Syncs Physician/Patient Data (CQRS)", "AMQP")
+Rel_U(rabbitmq, physiciansService, "Syncs Replicas", "AMQP")
+Rel_U(rabbitmq, patientsService, "Syncs Replicas", "AMQP")
 
 @enduml

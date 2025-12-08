@@ -1,0 +1,40 @@
+@startuml
+title VF1 - Interação de Serviços com o "Discovery Server"
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam shadowing false
+' Usa linhas ortogonais para ficar mais organizado (estilo circuito)
+skinparam linetype ortho
+
+System_Boundary(hap, "Healthcare Administration Platform") {
+
+    ' --- COMPONENTE CENTRAL ---
+    Container(eureka, "Discovery Server", "Netflix Eureka (8761)", "Service Registry & Discovery")
+
+    ' --- CLIENTES DO EUREKA (Serviços) ---
+
+    ' Infraestrutura
+    Container(apigateway, "API Gateway Cluster", "Spring Boot (8089/8090)", "Entry Point & Router")
+    Container(authService, "Auth Service Cluster", "Spring Boot", "Security Provider")
+
+    ' Negócio
+    Container(appointmentService, "Appointment Service", "Spring Boot", "Business Logic")
+    Container(physiciansService, "Physician Service", "Spring Boot", "Business Logic")
+    Container(patientsService, "Patient Service", "Spring Boot", "Business Logic")
+
+}
+
+' --- RELAÇÕES ---
+
+' O Gateway é especial: ele Regista-se E Consulta (Discovers) para saber para onde encaminhar
+Rel_D(eureka, apigateway, "Provides Registry", "HTTP")
+Rel_U(apigateway, eureka, "Registers & Discovers", "HTTP")
+
+' Os outros serviços apenas se Registam (dizem 'Estou vivo')
+Rel_U(authService, eureka, "Registers", "HTTP")
+Rel_U(appointmentService, eureka, "Registers", "HTTP")
+Rel_U(physiciansService, eureka, "Registers", "HTTP")
+Rel_U(patientsService, eureka, "Registers", "HTTP")
+
+@enduml
