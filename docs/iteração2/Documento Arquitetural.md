@@ -78,6 +78,12 @@ O diagrama de componentes C3 detalha a estrutura interna do Appointment Service 
 - O serviço tem uma camada de mensagens dedicada com um AppointmentProducer (para enviar eventos de agendamento) e um DataSyncConsumer (para receber dados externos, via RabbitMQ). O Business Layer utiliza os Ext*Repository (os Read Models CQRS) para validar a existência de médicos e pacientes internamente, em vez de fazer chamadas HTTP síncronas.
 - A camada de acesso a dados interage com uma única H2 Database local. Esta base de dados armazena os dados do serviço (através do AppointmentRepository) e também armazena as réplicas dos dados externos (ExtPhysicianRepository e ExtPatientRepository), que são atualizadas de forma assíncrona pelo DataSyncConsumer (o listener do RabbitMQ).
 
+## Fluxograma
+
+Para complementar a vista funcional, apresentamos o fluxo detalhado de execução para operações de escrita. Este diagrama demonstra o tratamento do pedido desde a entrada no API Gateway (validações de segurança) até à persistência na base de dados local.
+
+![fluxo](fluxogramas/fluxoCriarPhysician.svg)
+
 ## AuthService- Novo serviço 
 Para esta iteração e após debate interno, a equipa de desenvolvimento decidiu incluir um quarto serviço neste caso de autenticação para facilitar esta ação, aqui cada utilizador tem a sua role atribuída (neste caso as roles existentes são Admin, Physician e Patient). Com esta separação o nível de segurança aumenta pois definimos o nível de acesso a informação que cada role tem, isto é por exemplo apenas admin e physician podem visualizar dados de outros pacientes, registos de consultas, entre outros. Informação sensível armazenada de forma mais segura
 
