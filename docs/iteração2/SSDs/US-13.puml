@@ -1,0 +1,80 @@
+@startuml
+title US-13: Update Appointment (CQRS & Async)
+
+autonumber
+
+actor "Administrator / Patient" as User
+participant "API Gateway" as gateway
+
+box "Appointment Service (Replica A)" #E6F2FF
+    participant "AppController" as controller
+    participant "AppService" as service
+    ' Tabelas CQRS para validar se mudarmos de médico/paciente
+    participant "ExtPhysicianRepo" as physRepo
+    participant "ExtPatientRepo" as patRepo
+    participant "AppRepository" as appRepo
+    participant "AppProducer" as producer
+end box
+
+queue "RabbitMQ Broker" as mq
+
+box "Appointment Service (Replica B)" #F9F9F9
+    participant "DataSyncConsumer" as consumer
+end box
+
+User -> gateway : PUT /appointments/{id} (Dados Novos)
+activate gateway
+
+    note right of gateway
+        **Security Check**
+        Valida Token e Permissões
+        (Centralized Security)
+    end note
+
+gateway -> controller : encaminha pedido
+activate controller
+
+    controller -> service : updateAppointment(id, dto)
+    activate service
+
+        ' 1. Busca a consulta original
+        service -> appRepo : findById(id)
+        activate appRepo
+        appRepo --> service : appOriginal
+        deactivate appRepo
+
+        ' 2. Lógica de Atualização e Validação CQRS
+        note right of service
+            **Validação CQRS**
+            Se o update mudar o médico/paciente,
+            valida existência nas tabelas locais
+        end note
+
+        service -> physRepo : existsByNumber(newPhysicianId)
+        physRepo --> service : true
+
+        service -> service : atualizaCampos(appOriginal, dto)
+
+        ' 3. Grava
+        service -> appRepo : save(appAtualizada)
+        activate appRepo
+        appRepo --> service : appGuardada
+        deactivate appRepo
+
+        ' 4. Publica Evento (Fire-and-Forget)
+        service -> producer : notifyAppointmentUpdated(appGuardada)
+        activate producer
+            producer -> mq : Publish "AppointmentUpdatedEvent"
+        deactivate producer
+
+    service --> controller : AppointmentDTO
+    deactivate service
+
+controller --> gateway : 200 OK
+deactivate controller
+gateway --> User : 200 OK
+deactivate gateway
+
+' --- Sincronização em Background ---
+group Sincronização Assíncrona
+    mq

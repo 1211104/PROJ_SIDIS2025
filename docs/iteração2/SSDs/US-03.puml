@@ -1,0 +1,62 @@
+@startuml
+title US03 - Register Physician
+
+autonumber
+
+actor Administrator
+participant "API Gateway" as gateway
+
+box "Physician Service (Replica A)" #E6F2FF
+    participant "PhysicianController" as controller
+    participant "PhysicianService" as service
+    participant "PhysicianRepository" as repo
+    participant "PhysicianProducer" as producer
+end box
+
+queue "RabbitMQ Broker" as mq
+
+box "Physician Service (Replica B) / Appointment SVC" #F9F9F9
+    participant "DataSyncConsumer" as consumer
+end box
+
+
+Administrator -> gateway : POST /physicians (JSON)
+activate gateway
+gateway -> gateway : Valida JWT (Stateless)
+
+gateway -> controller : encaminha pedido
+activate controller
+
+
+
+    controller -> service : registerPhysician(dto)
+    activate service
+
+
+        service -> repo : save(entity)
+        activate repo
+        repo --> service : entity (id=1)
+        deactivate repo
+
+        service -> producer : notifyPhysicianCreated(entity)
+        activate producer
+            producer -> mq : Publish "PhysicianCreatedEvent"
+        deactivate producer
+
+    service --> controller : DTO (id=1)
+    deactivate service
+
+controller --> gateway : 201 Created
+deactivate controller
+gateway --> Administrator : 201 Created
+deactivate gateway
+
+
+group Sincronização Assíncrona (Eventual Consistency)
+    mq -> consumer : Consome "PhysicianCreatedEvent"
+    activate consumer
+    consumer -> consumer : Grava na Réplica B / Atualiza CQRS
+    deactivate consumer
+end
+
+@enduml
