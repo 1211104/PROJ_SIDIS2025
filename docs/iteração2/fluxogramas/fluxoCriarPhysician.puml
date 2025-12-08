@@ -1,0 +1,54 @@
+@startuml
+title Fluxograma - Criação de Physician e Sincronização
+
+start
+
+:Administrador envia POST /physicians;
+
+partition "API Gateway" {
+    :Verificar Token JWT;
+    if (Token Válido?) then (Não)
+        :Retornar 401 Unauthorized;
+        stop
+    else (Sim)
+        :Verificar Role (ADMIN);
+        if (É Admin?) then (Não)
+            :Retornar 403 Forbidden;
+            stop
+        else (Sim)
+            :Encaminhar para Physician Service;
+        endif
+    endif
+}
+
+partition "Physician Service (Replica A)" {
+    :Validar dados do DTO;
+    if (Dados Válidos?) then (Não)
+        :Retornar 400 Bad Request;
+        stop
+    else (Sim)
+        :Gravar na DB Local (H2);
+        :Publicar Evento no RabbitMQ (Fire-and-Forget);
+        :Retornar 201 Created;
+    endif
+}
+
+fork
+    :Responder ao Administrador (201 Created);
+    stop
+fork again
+    partition "RabbitMQ & Sincronização" {
+        :Evento chega à Fila;
+        if (Réplicas Disponíveis?) then (Sim)
+            :Consumer (Réplica B) recebe evento;
+            :Gravar na DB da Réplica B;
+            :Consumer (Appointment SVC) recebe evento;
+            :Atualizar tabela CQRS;
+        else (Não / Rede em baixo)
+            :Mensagem fica na Dead Letter Queue\n(ou tenta novamente);
+        endif
+    }
+    stop
+end fork
+
+@enduml
