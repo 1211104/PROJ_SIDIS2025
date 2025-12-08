@@ -45,13 +45,13 @@ Deployment_Node(RabbitMQNode, "RabbitMQ Broker", "RabbitMQ", "Message broker par
 }
 
 
-Rel(NginxService, APIGateway, "Forward externo / Reverse Proxy", "HTTP/REST")
+Rel(NginxService, APIGatewayNode, "Forward externo / Reverse Proxy", "HTTP/REST")
 
-Rel(APIGatewayNode, AuthServiceNode, "Routing para Auth Service", "HTTP/REST")
+Rel_Right(APIGatewayNode, AuthServiceNode, "Routing para Auth Service", "HTTP/REST")
 Rel_Right(APIGatewayNode, PatientServiceNode, "Routing para Patient Service", "HTTP/REST")
 Rel_Down(APIGatewayNode, PhysicianServiceNode, "Routing para Physicians Service", "HTTP/REST")
+Rel_Down(APIGatewayNode, AppointmentServiceNode, "Routing para Appointment Service", "HTTP/REST")
 
-Rel(AuthServiceNode, AppointmentServiceNode, "Validação de token / autorização", "HTTP/REST")
 
 
 Rel(PatientController, PatientDB, "Lê e Escreve", "JDBC")
@@ -63,6 +63,5 @@ Rel(AuthController, AuthDB, "Lê e Escreve", "JDBC")
 Rel(AppointmentServiceNode, RabbitMQNode, "Publica/Consome eventos CREATE/UPDATE/DELETE", "AMQP")
 Rel(PatientServiceNode, RabbitMQNode, "Publica/Consome eventos CREATE/UPDATE/DELETE", "AMQP")
 Rel(PhysicianServiceNode, RabbitMQNode, "Publica/Consome eventos CREATE/UPDATE/DELETE", "AMQP")
-Rel(AuthServiceNode, RabbitMQNode, "Publica/Consome eventos CREATE/UPDATE/DELETE", "AMQP")
 
 @enduml

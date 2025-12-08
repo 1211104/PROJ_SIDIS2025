@@ -1,7 +1,7 @@
 # AUTOAVALIAÇÃO
-- Nota geral do projeto: 15
+- Nota geral do projeto: 16-17
 
 
-- Evandro Carvalho: 15
-- Filipe Cardoso: 15
-- José Neto: 15
+- Evandro Carvalho: 16-17
+- Filipe Cardoso: 16-17
+- José Neto: 16-17
