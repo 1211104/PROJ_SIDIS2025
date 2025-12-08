@@ -1,54 +1,79 @@
-@startuml
-title Logical View
-
-skinparam classAttributeIconSize 0
+@startuml Logical View - Domain Model (Microservices)
+!theme plain
+hide circle
 skinparam linetype ortho
-hide empty members
 
+title Vista Lógica - Modelo de Domínio (Microserviços & CQRS)
 
-class Physician {
-  + id: Long
-  + physicianNumber: String
-  + name: String
-  + specialty: String
-  + contactInfo: String
+package "Physician Context" {
+    class Physician {
+        + physicianNumber : String <<PK>>
+        + name : String
+        + specialty : String
+        + contactInfo : String
+    }
 }
 
-class Patient {
-  + id: Long
-  + patientNumber: String
-  + name: String
-  + phoneNumber: String
+package "Patient Context" {
+    class Patient {
+        + patientNumber : String <<PK>>
+        + name : String
+        + phoneNumber : String
+    }
 }
 
-class Appointment {
-    +String physicianNumber
-    +String patientNumber
-    +ConsultationType consultationType
-    +AppointmentStatus status
-    +LocalDateTime startTime
-    +LocalDateTime endTime
+package "Appointment Context" {
+    class Appointment {
+        + appointmentNumber : String <<PK>>
+        + startTime : LocalDateTime
+        + endTime : LocalDateTime
+        + status : AppointmentStatus
+        + type : ConsultationType
+        --
+        + physicianNumber : String <<FK>>
+        + patientNumber : String <<FK>>
+    }
 
-  + physicianNumber: String
-  + patientNumber: String
+    enum AppointmentStatus {
+        SCHEDULED
+        DONE
+        CANCELLED
+    }
+
+    enum ConsultationType {
+        IN_PERSON
+        REMOTE
+    }
+
+    ' --- CQRS (Opcional, mas impressiona) ---
+    class "ExternalPhysician" as ExtPhys <<Projection>> {
+        + physicianNumber : String
+        + name : String
+    }
+
+    class "ExternalPatient" as ExtPat <<Projection>> {
+        + patientNumber : String
+        + name : String
+    }
+
+    Appointment *-- AppointmentStatus
+    Appointment *-- ConsultationType
+
+    Appointment ..> ExtPhys : valida com
+    Appointment ..> ExtPat : valida com
 }
 
-enum AppointmentStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-}
+' Relações Fracas (Apenas por ID)
+Physician -[hidden]down-> Appointment
+Patient -[hidden]down-> Appointment
 
-enum ConsultationType {
-  IN_PERSON
-  REMOTE
-}
 
-Physician "1" -- "0..*" Appointment : (has)
+note "Sincronizado via RabbitMQ" as N2
+Physician .. N2
+N2 ..> ExtPhys
 
-Patient "1" -- "0..*" Appointment : (has)
-
-Appointment *-- "1" AppointmentStatus : uses >
-Appointment *-- "1" ConsultationType : uses >
+note "Sincronizado via RabbitMQ" as N1
+Patient .. N1
+N1 ..> ExtPat
 
 @enduml
