@@ -3,17 +3,22 @@
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
 
-title VF2 — API Gateway, Auth, Services e RabbitMQ
+title VF2 — API Gateway, Auth, Services, RabbitMQ e Nginx
 
 
-Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway / Nginx", "Ponto de entrada central para roteamento de chamadas internas e externas.") {
-    Container(APIGateway, "API Gateway", "Router/Proxy", "Responsável por rotear chamadas para o Auth Service e para os restantes serviços.")
+Deployment_Node(NginxNode, "Nginx Reverse Proxy", "Nginx", "Ponto de entrada externo. Faz proxy para o API Gateway.") {
+    Container(NginxService, "Nginx", "Reverse Proxy", "Encaminha chamadas externas para o API Gateway")
+}
+
+
+Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway", "Ponto de entrada interno para roteamento de chamadas.") {
+    Container(APIGateway, "API Gateway", "Router/Proxy", "Responsável por rotear chamadas para o Auth Service e para os outros microserviços.")
 }
 
 
 Deployment_Node(AuthServiceNode, "Auth Service", "Spring Boot", "Serviço responsável pela autenticação e autorização.") {
     Container(AuthController, "Auth Controller", "REST API", "Expõe /api/auth para login, validação de tokens, etc.")
-    ContainerDb(AuthDB, "Auth Database", "H2 database", "Armazena utilizadores, roles, tokens revogados, etc.")
+    ContainerDb(AuthDB, "Auth Database", "PostegreSQL database", "Armazena utilizadores, roles, tokens revogados, etc.")
 }
 
 
@@ -40,10 +45,13 @@ Deployment_Node(RabbitMQNode, "RabbitMQ Broker", "RabbitMQ", "Message broker par
 }
 
 
+Rel(NginxService, APIGateway, "Forward externo / Reverse Proxy", "HTTP/REST")
+
 Rel(APIGatewayNode, AuthServiceNode, "Routing para Auth Service", "HTTP/REST")
-Rel(AuthServiceNode, AppointmentServiceNode, "Validação de token / autorização", "HTTP/REST")
 Rel_Right(APIGatewayNode, PatientServiceNode, "Routing para Patient Service", "HTTP/REST")
 Rel_Down(APIGatewayNode, PhysicianServiceNode, "Routing para Physicians Service", "HTTP/REST")
+
+Rel(AuthServiceNode, AppointmentServiceNode, "Validação de token / autorização", "HTTP/REST")
 
 
 Rel(PatientController, PatientDB, "Lê e Escreve", "JDBC")

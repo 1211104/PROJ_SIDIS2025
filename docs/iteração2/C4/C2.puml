@@ -1,5 +1,5 @@
 @startuml
-title C2 — HAP (Healthcare Administration Platform) — Container Diagram
+title C2 — HAP (Healthcare Administration Platform) — Container Diagram (com NGINX)
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
@@ -8,48 +8,58 @@ Person(physician, "Physician", "A person that uses the system")
 Person(patient, "Patient", "A person that uses the system")
 Person(admin, "Administrator", "A person that uses the system")
 
-
 skinparam shadowing false
+
+
+Container_Ext(nginx, "Nginx Reverse Proxy", "Nginx", "Receives all external traffic and forwards it to the API Gateway.")
+
 
 System_Boundary(hap, "Healthcare Administration Platform") {
 
-  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Only entry point. Performs JWT Validation and forwards requests.")
+  Container(api_gw, "API Gateway", "Spring Cloud Gateway (8089)", "Main entry point. Performs JWT validation and forwards requests.")
   Container(authService, "Authentication Service", "JWT Tokens", "Creates JWT Validation Tokens.")
-  Container(discovery_server, "Discovery Server", "Eureka (8761)", "Registers all services. Knows where is everyone")
+  Container(discovery_server, "Discovery Server", "Eureka (8761)", "Registers all services. Knows where each service is located.")
   Container(rabbitmq, "Message Broker", "RabbitMQ", "Handles asynchronous communication and event distribution.")
 
+  Container(physiansService, "Physician Service", "Spring Boot", "Handles physician management. Consumes/Produces messages.")
+  Container(patientsService, "Patient Service", "Spring Boot", "Handles patient management. Consumes/Produces messages.")
+  Container(appointmentService, "Appointment Service", "Spring Boot", "Handles appointment management. Consumes/Produces messages.")
 
-  Container(physiansService, "Physician Service", "Spring Cloud Gateway (8089)", "Handles physician management. Consumes/Produces messages.")
-  Container(patientsService, "Patient Service", "Spring Cloud Gateway (8089)", "Handles patient management. Consumes/Produces messages.")
-  Container(appointmentService, "Appointment Service", "Spring Cloud Gateway (8089)", "Handles appointment management. Consumes/Produces messages.")
-
-
-  ContainerDb(PatientsDB, "Patient DB", "H2 DB", "Stores pacient information")
+  ContainerDb(PatientsDB, "Patient DB", "H2 DB", "Stores patient information")
   ContainerDb(PhysiciansDB, "Physician DB", "H2 DB", "Stores physician information")
   ContainerDb(AppointmentsDB, "Appointment DB", "H2 DB", "Stores appointment information")
 
 }
 
-Rel_Down(physician, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
-Rel_Down(patient, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
-Rel_Down(admin, api_gw, "1. Uses [HTTP/REST] (JSON)\n2. Receives/Sends JWT", "HTTP/REST")
-Rel_Right(authService, api_gw, "Creates JWT Validation Tokens","JWT Tokens")
+
+Rel(physician, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
+Rel(patient, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
+Rel(admin, nginx, "Uses system\nReceives/Sends JWT", "HTTP/REST")
+
+
+Rel(nginx, api_gw, "Forwards external requests", "HTTP/REST")
+
+
+Rel_Right(authService, api_gw, "Creates JWT Validation Tokens", "JWT Tokens")
 
 Rel_Down(api_gw, physiansService, "Forwards requests + JWT Token", "HTTP/REST")
 Rel_Down(api_gw, patientsService, "Forwards requests + JWT Token", "HTTP/REST")
 Rel_Down(api_gw, appointmentService, "Forwards requests + JWT Token", "HTTP/REST")
-Rel_Right(api_gw, discovery_server, "Registers and discovers services available", "HTTP")
+
+Rel_Right(api_gw, discovery_server, "Service registration and discovery", "HTTP")
+
 
 Rel(appointmentService, rabbitmq, "Produces AppointmentCreated Event", "AMQP")
 Rel(physiansService, rabbitmq, "Produces PhysicianDataUpdated Event", "AMQP")
 Rel_Right(patientsService, rabbitmq, "Produces PatientDataUpdated Event", "AMQP")
 
-Rel(rabbitmq, patientsService, "Consumes events/Receives Commands", "AMQP")
-Rel(rabbitmq, physiansService, "Consumes events/Receives Commands", "AMQP")
-Rel(rabbitmq, appointmentService, "Consumes events/Receives Commands", "AMQP")
+Rel(rabbitmq, patientsService, "Consumes events / Receives Commands", "AMQP")
+Rel(rabbitmq, physiansService, "Consumes events / Receives Commands", "AMQP")
+Rel(rabbitmq, appointmentService, "Consumes events / Receives Commands", "AMQP")
 
-patientsService --> PatientsDB : Reads from and writes to
-physiansService --> PhysiciansDB : Reads from and writes to
-appointmentService --> AppointmentsDB : Reads from and writes to
+
+patientsService --> PatientsDB : Reads and writes
+physiansService --> PhysiciansDB : Reads and writes
+appointmentService --> AppointmentsDB : Reads and writes
 
 @enduml

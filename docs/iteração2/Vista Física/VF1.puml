@@ -5,17 +5,19 @@ title VF1
 
 skinparam shadowing false
 
+System_Ext(nginx, "Nginx", "Reverse Proxy / Load Balancer")
+
 System_Boundary(hap, "Healthcare Administration Platform") {
 
   Container(physiciansService, "Physician Service", "Java/Spring Boot (8084/9084)", "Handles physician management")
   Container(patientsService, "Patient Service", "Java/Spring Boot (8081/8082)", "Handles patient management")
   Container(appointmentService, "Appointment Service", "Java/Spring Boot (8085/9085)", "Handles appointment management")
-  Container(apigateway, "APIGateway", "Java/Spring Boot (8085/9085)", "Routes requests")
-  Container(authService, "Auth Service", "Java/Spring Boot (8085/9085)", "Handles authorization and role management")
+  Container(apigateway, "APIGateway", "Java/Spring Boot (8080)", "Routes requests")
+  Container(authService, "Auth Service", "Java/Spring Boot (8090)", "Handles authorization and role management")
 
 }
 
-
+nginx --> apigateway : Forwards client requests
 appointmentService --> physiciansService
 appointmentService --> patientsService
 apigateway --> authService
