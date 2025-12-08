@@ -1,102 +1,107 @@
-@startuml C4 Deployment Diagram - With API Gateway, Auth Service and RabbitMQ
+@startuml C4 Deployment Diagram - VF3 Replication and Sync
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
 
-title VF4 — NGINX → API Gateway → Auth Service → Serviços + RabbitMQ
+title VF3 — Deployment View (Réplicas, Load Balancing e Sincronização Bidirecional)
 
-
-Deployment_Node(NginxNode, "Nginx Reverse Proxy", "Nginx", "Ponto de entrada externo. Encaminha chamadas para o API Gateway.") {
-    Container(NginxService, "Nginx", "Reverse Proxy", "Encaminha tráfego externo para o API Gateway")
+' --- ENTRADA ---
+Deployment_Node(NginxNode, "Load Balancer Externo", "Nginx", "Port 80") {
+    Container(NginxService, "Nginx", "Reverse Proxy", "Encaminha para o Gateway")
 }
 
-
-Deployment_Node(APIGatewayNode, "API Gateway", "Spring Cloud Gateway", "Ponto de entrada interno para roteamento de pedidos.") {
-    Container(APIGateway, "API Gateway", "Router/Proxy", "Roteia chamadas para o Auth Service e restantes serviços.")
+Deployment_Node(APIGatewayNode, "API Gateway Cluster", "Spring Cloud Gateway", "Port 8089/8090") {
+    Container(APIGateway, "API Gateway", "Router/Proxy", "Load Balancing & JWT Validation")
 }
 
-
-Deployment_Node(AuthServiceNode, "Auth Service", "Spring Boot", "Serviço de autenticação e autorização.") {
-    Container(AuthController, "Auth Controller", "REST API", "Valida tokens e autentica pedidos antes de encaminhar para os serviços.")
-    ContainerDb(AuthDB, "Auth Database", "PostgresSQL", "Armazena credenciais, permissões e tokens revogados.")
+' --- SEGURANÇA (ISOLADA) ---
+Deployment_Node(AuthServiceNode, "Auth Service Cluster", "Spring Boot", "Scalable") {
+    Container(AuthController, "Auth Controller", "REST API", "Login & Register")
+    ContainerDb(AuthDB, "Auth Database", "PostgreSQL", "Shared DB")
 }
 
-
-Deployment_Node(AppointmentServiceNodeA, "Appointment Service A", "Spring Boot", "Réplica A do serviço de consultas.") {
-    Container(AppointmentControllerA, "Appointment Controller A", "REST API", "Expõe /api/appointments.")
-    ContainerDb(AppointmentDBA, "Appointment Database A", "H2 database", "Armazena dados das consultas.")
+' --- BARRAMENTO DE MENSAGENS ---
+Deployment_Node(RabbitMQNode, "Infraestrutura de Eventos", "RabbitMQ", "Port 5672") {
+    Container(RabbitMQBroker, "RabbitMQ Broker", "AMQP", "Broker de Eventos")
 }
 
+' --- SERVIÇOS DE NEGÓCIO (RÉPLICAS) ---
 
-Deployment_Node(AppointmentServiceNodeB, "Appointment Service B", "Spring Boot", "Réplica B do serviço de consultas.") {
-    Container(AppointmentControllerB, "Appointment Controller B", "REST API", "Expõe /api/appointments.")
-    ContainerDb(AppointmentDBB, "Appointment Database B", "H2 database", "Armazena dados das consultas.")
+Deployment_Node(AppNode, "Appointment Services", "Cluster") {
+    Deployment_Node(AppointmentServiceNodeA, "Replica A", "Spring Boot") {
+        Container(AppointmentControllerA, "Appointment SVC A", "REST API", "Port available")
+        ContainerDb(AppointmentDBA, "DB A", "H2 File", "Local DB")
+    }
+    Deployment_Node(AppointmentServiceNodeB, "Replica B", "Spring Boot") {
+        Container(AppointmentControllerB, "Appointment SVC B", "REST API", "Port available")
+        ContainerDb(AppointmentDBB, "DB B", "H2 File", "Local DB")
+    }
 }
 
-
-Deployment_Node(PatientServiceNodeA, "Patient Service A", "Spring Boot", "Réplica A do serviço de pacientes.") {
-    Container(PatientControllerA, "Patient Controller A", "REST API", "Expõe /api/patients.")
-    ContainerDb(PatientDBA, "Patient Database A", "H2 database", "Armazena dados de pacientes.")
+Deployment_Node(PhysNode, "Physician Services", "Cluster") {
+    Deployment_Node(PhysicianServiceNodeA, "Replica A", "Spring Boot") {
+        Container(PhysicianControllerA, "Physician SVC A", "REST API", "Port available")
+        ContainerDb(PhysicianDBA, "DB A", "H2 File", "Local DB")
+    }
+    Deployment_Node(PhysicianServiceNodeB, "Replica B", "Spring Boot") {
+        Container(PhysicianControllerB, "Physician SVC B", "REST API", "Port available")
+        ContainerDb(PhysicianDBB, "DB B", "H2 File", "Local DB")
+    }
 }
 
-Deployment_Node(PatientServiceNodeB, "Patient Service B", "Spring Boot", "Réplica B do serviço de pacientes.") {
-    Container(PatientControllerB, "Patient Controller B", "REST API", "Expõe /api/patients.")
-    ContainerDb(PatientDBB, "Patient Database B", "H2 database", "Armazena dados de pacientes.")
+Deployment_Node(PatNode, "Patient Services", "Cluster") {
+    Deployment_Node(PatientServiceNodeA, "Replica A", "Spring Boot") {
+        Container(PatientControllerA, "Patient SVC A", "REST API", "Port available")
+        ContainerDb(PatientDBA, "DB A", "H2 File", "Local DB")
+    }
+    Deployment_Node(PatientServiceNodeB, "Replica B", "Spring Boot") {
+        Container(PatientControllerB, "Patient SVC B", "REST API", "Port available")
+        ContainerDb(PatientDBB, "DB B", "H2 File", "Local DB")
+    }
 }
 
+' --- RELAÇÕES DE REDE (HTTP) ---
+Rel_D(NginxService, APIGateway, "Forward", "HTTP")
 
-Deployment_Node(PhysicianServiceNodeA, "Physician Service A", "Spring Boot", "Réplica A do serviço de médicos.") {
-    Container(PhysicianControllerA, "Physician Controller A", "REST API", "Expõe /api/physicians.")
-    ContainerDb(PhysicianDBA, "Physician Database A", "H2 database", "Armazena dados de médicos.")
-}
+' Load Balancing do Gateway para as Réplicas
+Rel_D(APIGateway, AppointmentControllerA, "LB", "HTTP")
+Rel_D(APIGateway, AppointmentControllerB, "LB", "HTTP")
+Rel_D(APIGateway, PhysicianControllerA, "LB", "HTTP")
+Rel_D(APIGateway, PhysicianControllerB, "LB", "HTTP")
+Rel_D(APIGateway, PatientControllerA, "LB", "HTTP")
+Rel_D(APIGateway, PatientControllerB, "LB", "HTTP")
+Rel_L(APIGateway, AuthController, "Rota /auth", "HTTP")
 
-
-Deployment_Node(PhysicianServiceNodeB, "Physician Service B", "Spring Boot", "Réplica B do serviço de médicos.") {
-    Container(PhysicianControllerB, "Physician Controller B", "REST API", "Expõe /api/physicians.")
-    ContainerDb(PhysicianDBB, "Physician Database B", "H2 database", "Armazena dados de médicos.")
-}
-
-
-Deployment_Node(RabbitMQNode, "RabbitMQ Broker", "RabbitMQ", "Broker de mensagens para comunicação assíncrona entre réplicas.") {
-    Container(RabbitMQBroker, "RabbitMQ", "Message Broker (AMQP)", "Distribui eventos CREATE/UPDATE/DELETE entre réplicas e serviços.")
-}
-
-
-
-Rel(NginxService, APIGateway, "Reverse Proxy / Forwarding", "HTTP/REST")
-
-
-Rel(APIGatewayNode, AuthServiceNode, "Validação de credenciais", "HTTP/REST")
-
-
-Rel(AuthServiceNode, AppointmentServiceNodeA, "Encaminha pedidos validados", "HTTP/REST")
-Rel(AuthServiceNode, AppointmentServiceNodeB, "Encaminha pedidos validados", "HTTP/REST")
-
-Rel(AuthServiceNode, PatientServiceNodeA, "Encaminha pedidos validados", "HTTP/REST")
-Rel(AuthServiceNode, PatientServiceNodeB, "Encaminha pedidos validados", "HTTP/REST")
-
-Rel(AuthServiceNode, PhysicianServiceNodeA, "Encaminha pedidos validados", "HTTP/REST")
-Rel(AuthServiceNode, PhysicianServiceNodeB, "Encaminha pedidos validados", "HTTP/REST")
-
-
+' --- RELAÇÕES DE DADOS (JPA) ---
 Rel(AuthController, AuthDB, "Lê/Escreve", "JDBC")
-Rel(PatientControllerA, PatientDBA, "Lê/Escreve", "JDBC")
-Rel(PatientControllerB, PatientDBB, "Lê/Escreve", "JDBC")
+Rel(AppointmentControllerA, AppointmentDBA, "Lê/Escreve", "JDBC")
+Rel(AppointmentControllerB, AppointmentDBB, "Lê/Escreve", "JDBC")
 Rel(PhysicianControllerA, PhysicianDBA, "Lê/Escreve", "JDBC")
 Rel(PhysicianControllerB, PhysicianDBB, "Lê/Escreve", "JDBC")
-Rel_Down(AppointmentControllerA, AppointmentDBA, "Lê/Escreve", "JDBC")
-Rel_Down(AppointmentControllerB, AppointmentDBB, "Lê/Escreve", "JDBC")
+Rel(PatientControllerA, PatientDBA, "Lê/Escreve", "JDBC")
+Rel(PatientControllerB, PatientDBB, "Lê/Escreve", "JDBC")
 
+' --- RELAÇÕES ASSÍNCRONAS (SYNC COMPLETO) ---
 
-Rel(AppointmentServiceNodeA, RabbitMQNode, "Publica/Consome eventos", "AMQP")
-Rel(AppointmentServiceNodeB, RabbitMQNode, "Publica/Consome eventos", "AMQP")
+' Appointment (Consome CQRS e Sincroniza entre si)
+Rel(RabbitMQBroker, AppointmentControllerA, "Sync (Consome)", "AMQP")
+Rel(AppointmentControllerA, RabbitMQBroker, "Pub Event", "AMQP")
 
-Rel(PatientServiceNodeA, RabbitMQNode, "Publica/Consome eventos", "AMQP")
-Rel(PatientServiceNodeB, RabbitMQNode, "Publica/Consome eventos", "AMQP")
+Rel(RabbitMQBroker, AppointmentControllerB, "Sync (Consome)", "AMQP")
+Rel(AppointmentControllerB, RabbitMQBroker, "Pub Event", "AMQP")
 
-Rel(PhysicianServiceNodeA, RabbitMQNode, "Publica/Consome eventos", "AMQP")
-Rel(PhysicianServiceNodeB, RabbitMQNode, "Publica/Consome eventos", "AMQP")
+' Physician (Consome para replicar e Publica)
+Rel(RabbitMQBroker, PhysicianControllerA, "Sync (Consome)", "AMQP")
+Rel(PhysicianControllerA, RabbitMQBroker, "Pub Event", "AMQP")
 
-Rel(AuthServiceNode, RabbitMQNode, "Publica auditoria / Consome eventos", "AMQP")
+Rel(RabbitMQBroker, PhysicianControllerB, "Sync (Consome)", "AMQP")
+Rel(PhysicianControllerB, RabbitMQBroker, "Pub Event", "AMQP")
+
+' Patient (Consome para replicar e Publica)
+Rel(RabbitMQBroker, PatientControllerA, "Sync (Consome)", "AMQP")
+Rel(PatientControllerA, RabbitMQBroker, "Pub Event", "AMQP")
+
+Rel(RabbitMQBroker, PatientControllerB, "Sync (Consome)", "AMQP")
+Rel(PatientControllerB, RabbitMQBroker, "Pub Event", "AMQP")
 
 @enduml
