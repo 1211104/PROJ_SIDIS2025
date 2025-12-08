@@ -1,0 +1,80 @@
+@startuml
+title US-04: Schedule Appointment (CQRS & Async)
+
+autonumber
+
+actor "Administrator / Patient" as User
+participant "API Gateway" as gateway
+
+box "Appointment Service (Replica A)" #E6F2FF
+    participant "AppointmentController" as controller
+    participant "AppointmentService" as service
+    ' Aqui estão as tabelas de Projeção (A magia do CQRS)
+    participant "ExtPhysicianRepo" as physRepo
+    participant "ExtPatientRepo" as patRepo
+    participant "AppointmentRepository" as appRepo
+    participant "AppointmentProducer" as producer
+end box
+
+queue "RabbitMQ Broker" as mq
+
+box "Appointment Service (Replica B)" #F9F9F9
+    participant "DataSyncConsumer" as consumer
+end box
+
+User -> gateway : POST /appointments (json)
+activate gateway
+gateway -> gateway : Valida Token JWT
+
+gateway -> controller : encaminha pedido
+activate controller
+
+    controller -> service : scheduleAppointment(dto)
+    activate service
+
+        ' --- O GRANDE TRUQUE DO CQRS ---
+        note right of service
+            **Validação Local (CQRS)**
+            Verifica existência sem chamar
+            os outros microsserviços via HTTP
+        end note
+
+        service -> physRepo : existsByNumber(physicianNumber)
+        activate physRepo
+        physRepo --> service : true
+        deactivate physRepo
+
+        service -> patRepo : existsByNumber(patientNumber)
+        activate patRepo
+        patRepo --> service : true
+        deactivate patRepo
+
+        ' Se tudo ok, grava
+        service -> appRepo : save(appointment)
+        activate appRepo
+        appRepo --> service : appointment (saved)
+        deactivate appRepo
+
+        ' Publica evento
+        service -> producer : notifyAppointmentCreated(app)
+        activate producer
+            producer -> mq : Publish "AppointmentCreatedEvent"
+        deactivate producer
+
+    service --> controller : AppointmentDTO
+    deactivate service
+
+controller --> gateway : 201 Created
+deactivate controller
+gateway --> User : 201 Created
+deactivate gateway
+
+' --- Sincronização em Background ---
+group Sincronização Assíncrona
+    mq -> consumer : Consome "AppointmentCreatedEvent"
+    activate consumer
+    consumer -> consumer : Grava na Réplica B
+    deactivate consumer
+end
+
+@enduml

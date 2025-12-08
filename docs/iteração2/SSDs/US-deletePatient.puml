@@ -1,0 +1,67 @@
+@startuml
+title US-Delete-Patient: As Admin, I want to delete a Patient
+
+autonumber
+
+actor Administrator
+participant "API Gateway" as gateway
+
+box "Patient Service (Replica A)" #E6F2FF
+    participant "PatientController" as controller
+    participant "PatientService" as service
+    participant "PatientRepository" as repo
+    participant "PatientProducer" as producer
+end box
+
+queue "RabbitMQ Broker" as mq
+
+box "Patient Service (Replica B) / Appointment SVC" #F9F9F9
+    participant "DataSyncConsumer" as consumer
+end box
+
+Administrator -> gateway : DELETE /patients/{id}
+activate gateway
+
+    note right of gateway
+        **Security Check**
+        Valida Token JWT e
+        verifica Role = "ADMIN"
+    end note
+
+    gateway -> gateway : Valida Permissões
+
+gateway -> controller : encaminha pedido
+activate controller
+
+    controller -> service : deletePatient(id)
+    activate service
+
+        ' 1. Apaga Localmente
+        service -> repo : deleteById(id)
+        activate repo
+        repo --> service : void
+        deactivate repo
+
+        ' 2. Avisa o mundo (Fire-and-Forget)
+        service -> producer : notifyPatientDeleted(id)
+        activate producer
+            producer -> mq : Publish "PatientDeletedEvent"
+        deactivate producer
+
+    service --> controller : void
+    deactivate service
+
+controller --> gateway : 204 No Content
+deactivate controller
+gateway --> Administrator : 204 No Content
+deactivate gateway
+
+' --- EM BACKGROUND ---
+group Sincronização Assíncrona
+    mq -> consumer : Consome "PatientDeletedEvent"
+    activate consumer
+    consumer -> consumer : Apaga na Réplica B / Atualiza CQRS
+    deactivate consumer
+end
+
+@enduml
