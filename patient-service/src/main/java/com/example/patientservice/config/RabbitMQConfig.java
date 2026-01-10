@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    // CONFIGURAÇÃO SYNC (CQRS)
     @Value("${hap.rabbitmq.exchange.patients}")
     private String exchangeName;
 
@@ -23,19 +25,55 @@ public class RabbitMQConfig {
         return new FanoutExchange(exchangeName);
     }
 
-    // Fila anonima para sincronizacao entre replicas
     @Bean
     public Queue syncQueue() {
-
         String queueName = "patient-sync-queue-" + instanceId;
-
-        return new Queue(queueName, true);
+        return new Queue(queueName, true, false, false);
     }
 
     @Bean
-    public Binding binding(FanoutExchange exchange, Queue syncQueue) {
+    public Binding binding(@Qualifier("patientExchange") FanoutExchange exchange,
+                           @Qualifier("syncQueue") Queue syncQueue) {
         return BindingBuilder.bind(syncQueue).to(exchange);
     }
+
+    // ==========================================
+    // CONFIGURAÇÃO PARA A SAGA
+    // ==========================================
+
+    @Value("${hap.rabbitmq.exchange.appointments:appointment-exchange}")
+    private String appointmentExchangeName;
+
+    // Exchange dos Appointments (necessário para ouvir eventos)
+    @Bean
+    public FanoutExchange appointmentExchange() {
+        return new FanoutExchange(appointmentExchangeName);
+    }
+
+    // Fila da Saga (Worker Queue - SEM ID de instância)
+    // Para validar consultas (Load Balanced entre réplicas)
+    @Bean
+    public Queue sagaPatientQueue() {
+        return new Queue("saga-patient-appointment-listener", true);
+    }
+
+    // Ligar a Fila à Exchange dos Appointments
+    @Bean
+    public Binding bindSagaQueue(@Qualifier("appointmentExchange") FanoutExchange appointmentExchange,
+                                 @Qualifier("sagaPatientQueue") Queue q) {
+        return BindingBuilder.bind(q).to(appointmentExchange);
+    }
+
+    // Fila de RESPOSTA (Para onde vamos enviar o "Válido/Inválido")
+    // O AppointmentService está à escuta exatamente neste nome
+    @Bean
+    public Queue responseQueue() {
+        return new Queue("patient-response-queue", true);
+    }
+
+    // ==========================================
+    // UTILITÁRIOS
+    // ==========================================
 
     @Bean
     public MessageConverter jsonMessageConverter() {

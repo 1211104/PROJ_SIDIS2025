@@ -7,13 +7,13 @@ public class PatientEvent implements Serializable {
     private String patientNumber;
     private String name;
     private String phoneNumber;
-    private String eventType;
+    private String eventType; // "CREATED", "UPDATED", "DELETED"
 
 
     public PatientEvent() {
     }
 
-
+    // Construtor
     public PatientEvent(String patientNumber, String name, String phoneNumber, String eventType) {
         this.patientNumber = patientNumber;
         this.name = name;
@@ -21,45 +21,17 @@ public class PatientEvent implements Serializable {
         this.eventType = eventType;
     }
 
-    // 3. Getters e Setters
-    public String getPatientNumber() {
-        return patientNumber;
-    }
+    // GETTERS & SETTERS
 
-    public void setPatientNumber(String patientNumber) {
-        this.patientNumber = patientNumber;
-    }
+    public String getPatientNumber() { return patientNumber; }
+    public void setPatientNumber(String patientNumber) { this.patientNumber = patientNumber; }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public String getEventType() {
-        return eventType;
-    }
-
-    public void setEventType(String eventType) {
-        this.eventType = eventType;
-    }
-
-    @Override
-    public String toString() {
-        return "PatientEvent{" +
-                "patientNumber='" + patientNumber + '\'' +
-                ", name='" + name + '\'' +
-                ", eventType='" + eventType + '\'' +
-                '}';
-    }
+    public String getEventType() { return eventType; }
+    public void setEventType(String eventType) { this.eventType = eventType; }
 }

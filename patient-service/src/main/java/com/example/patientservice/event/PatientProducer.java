@@ -29,6 +29,7 @@ public class PatientProducer {
     }
 
     public void sendPatientDeleted(String patientNumber) {
+        // Para delete basta o ID e o tipo
         PatientEvent event = new PatientEvent(patientNumber, null, null, "DELETED");
         logger.info("--> RabbitMQ: A enviar evento DELETED para {}", patientNumber);
         rabbitTemplate.convertAndSend(exchangeName, "", event);
