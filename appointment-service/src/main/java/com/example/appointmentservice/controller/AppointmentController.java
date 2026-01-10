@@ -3,10 +3,17 @@ package com.example.appointmentservice.controller;
 import com.example.appointmentservice.event.AppointmentProducer;
 import com.example.appointmentservice.model.Appointment;
 import com.example.appointmentservice.model.AppointmentStatus;
-import com.example.appointmentservice.model.ConsultationType;
+import com.example.appointmentservice.model.AppointmentEventStore;
+import com.example.appointmentservice.repository.AppointmentEventRepository;
 import com.example.appointmentservice.repository.AppointmentRepository;
 import com.example.appointmentservice.repository.ExternalPatientRepository;
 import com.example.appointmentservice.repository.ExternalPhysicianRepository;
+
+// Imports para JSON e UUID
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,30 +23,165 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/appointments")
 public class AppointmentController {
 
+    // REPOSITÓRIOS LEGACY (Para Search, Delete, Patch)
     private final AppointmentRepository appointmentRepo;
+
+    // REPOSITÓRIOS CQRS (Validação de Leitura)
     private final ExternalPhysicianRepository physicianRepo;
     private final ExternalPatientRepository patientRepo;
 
+    // REPOSITÓRIO DE EVENTOS (Event Sourcing)
+    private final AppointmentEventRepository eventRepository;
+
     private final AppointmentProducer appointmentProducer;
 
+    // Para converter Objetos em JSON
+    private final ObjectMapper objectMapper;
+
+    // CONSTRUTOR COMPLETO
     public AppointmentController(AppointmentRepository appointmentRepo,
                                  ExternalPhysicianRepository physicianRepo,
                                  ExternalPatientRepository patientRepo,
+                                 AppointmentEventRepository eventRepository,
                                  AppointmentProducer appointmentProducer) {
         this.appointmentRepo = appointmentRepo;
         this.physicianRepo = physicianRepo;
         this.patientRepo = patientRepo;
+        this.eventRepository = eventRepository;
         this.appointmentProducer = appointmentProducer;
+
+        // Configura o Jackson para aceitar datas (LocalDateTime)
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+    }
+
+
+    //  MÉTODO AUXILIAR: REPLAY (Reconstrói o estado atual)
+    private Appointment replayEvents(String appointmentNumber) {
+        // Buscar histórico ordenado por data
+        List<AppointmentEventStore> history = eventRepository.findByAppointmentNumberOrderByOccurredAtAsc(appointmentNumber);
+
+        if (history.isEmpty()) return null;
+
+        Appointment aggregate = new Appointment();
+
+        // Aplicar eventos sequencialmente
+        for (AppointmentEventStore event : history) {
+            try {
+                switch (event.getEventType()) {
+                    case "APPOINTMENT_CREATED":
+                        // Reconstrói a partir do JSON guardado
+                        Appointment payloadApp = objectMapper.readValue(event.getPayload(), Appointment.class);
+
+                        aggregate.setAppointmentNumber(payloadApp.getAppointmentNumber());
+                        aggregate.setPhysicianNumber(payloadApp.getPhysicianNumber());
+                        aggregate.setPatientNumber(payloadApp.getPatientNumber());
+                        aggregate.setConsultationType(payloadApp.getConsultationType());
+                        aggregate.setStartTime(payloadApp.getStartTime());
+                        aggregate.setEndTime(payloadApp.getEndTime());
+                        aggregate.setStatus(AppointmentStatus.PENDING); // Estado inicial
+                        break;
+
+                    case "APPOINTMENT_CANCELLED":
+                        aggregate.setStatus(AppointmentStatus.CANCELLED);
+                        break;
+
+                    case "APPOINTMENT_CONFIRMED":
+                        aggregate.setStatus(AppointmentStatus.CONFIRMED);
+                        break;
+
+                    case "APPOINTMENT_REJECTED": // Caso falhe
+                        aggregate.setStatus(AppointmentStatus.REJECTED);
+                        break;
+                }
+
+            } catch (JsonProcessingException e) {
+                System.err.println("Erro ao processar JSON do evento ID: " + event.getId());
+                e.printStackTrace();
+            }
+        }
+        return aggregate;
     }
 
     // ==========================================
-    // LEITURAS (Apenas na BD Local)
+    //  LEITURAS (USANDO EVENT SOURCING)
     // ==========================================
+
+    @GetMapping("/by-number/{appointmentNumber}")
+    public ResponseEntity<Appointment> getByNumber(@PathVariable String appointmentNumber) {
+        Appointment app = replayEvents(appointmentNumber);
+
+        if (app == null) {
+            // Fallback: Se não encontrar nos eventos, tenta na BD antiga (durante a migração)
+            return appointmentRepo.findByAppointmentNumber(appointmentNumber)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        }
+
+        return ResponseEntity.ok(app);
+    }
+
+    // ==========================================
+    //  ESCRITA (CRIAÇÃO VIA EVENT SOURCING)
+    // ==========================================
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity<?> create(@RequestBody Appointment body) {
+        // Validações CQRS
+        if (body.getPhysicianNumber() == null || body.getPhysicianNumber().isBlank())
+            return ResponseEntity.badRequest().body("physicianNumber é obrigatório");
+
+        // Verifica se existe na Projeção Local (tabela externa)
+        if (!physicianRepo.existsById(body.getPhysicianNumber())) {
+            return ResponseEntity.status(404).body("Physician inexistente (ou não sincronizado)");
+        }
+        if (body.getPatientNumber() == null || !patientRepo.existsById(body.getPatientNumber())) {
+            return ResponseEntity.status(404).body("Patient inexistente (ou não sincronizado)");
+        }
+
+        // Gerar ID e Estado Inicial
+        String newId = UUID.randomUUID().toString();
+        body.setAppointmentNumber(newId);
+        body.setStatus(AppointmentStatus.PENDING); // Nasce como PENDING
+        if (body.getStartTime() == null) body.setStartTime(LocalDateTime.now());
+
+        try {
+            // Serializar para JSON
+            String jsonPayload = objectMapper.writeValueAsString(body);
+
+            // Criar o Evento
+            AppointmentEventStore newEvent = new AppointmentEventStore(
+                    newId,
+                    "APPOINTMENT_CREATED",
+                    jsonPayload
+            );
+
+            // Gravar na Tabela de Eventos (Event Store)
+            eventRepository.save(newEvent);
+
+            // Enviar para RabbitMQ (Início da Saga)
+            appointmentProducer.sendAppointmentCreated(body);
+
+            // Retorna 202 Accepted
+            return ResponseEntity.accepted()
+                    .location(URI.create("/api/appointments/by-number/" + newId))
+                    .body(body);
+
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.internalServerError().body("Erro ao processar JSON");
+        }
+    }
+
+    // ==================================================================
+    //  MÉTODOS LEGACY
+    // ==================================================================
 
     @GetMapping
     public List<Appointment> search(@RequestParam(required = false) String physician,
@@ -52,56 +194,6 @@ public class AppointmentController {
         return appointmentRepo.findAll();
     }
 
-    @GetMapping("/by-number/{appointmentNumber}")
-    public ResponseEntity<Appointment> getByNumber(@PathVariable String appointmentNumber) {
-        return appointmentRepo.findByAppointmentNumber(appointmentNumber)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // ==========================================
-    // ESCRITAS (Validacao Local via CQRS)
-    // ==========================================
-
-    @PostMapping
-    @Transactional
-    public ResponseEntity<?> create(@RequestBody Appointment body) {
-        // Validacoes Basicas
-        if (body.getAppointmentNumber() == null || body.getAppointmentNumber().isBlank())
-            return ResponseEntity.badRequest().body("appointmentNumber é obrigatório");
-        if (body.getPhysicianNumber() == null || body.getPhysicianNumber().isBlank())
-            return ResponseEntity.badRequest().body("physicianNumber é obrigatório");
-        if (body.getPatientNumber() == null || body.getPatientNumber().isBlank())
-            return ResponseEntity.badRequest().body("patientNumber é obrigatório");
-
-        // Unicidade
-        if (appointmentRepo.findByAppointmentNumber(body.getAppointmentNumber()).isPresent())
-            return ResponseEntity.status(409).body("appointmentNumber já existe");
-
-        // VALIDACAO CQRS
-        if (!physicianRepo.existsById(body.getPhysicianNumber())) {
-            return ResponseEntity.status(404).body("physicianNumber inexistente (ou ainda não sincronizado)");
-        }
-
-        if (!patientRepo.existsById(body.getPatientNumber())) {
-            return ResponseEntity.status(404).body("patientNumber inexistente (ou ainda não sincronizado)");
-        }
-
-        // Valores Default
-        if (body.getStatus() == null) body.setStatus(AppointmentStatus.SCHEDULED);
-        if (body.getConsultationType() == null) body.setConsultationType(ConsultationType.IN_PERSON);
-        if (body.getStartTime() == null) body.setStartTime(LocalDateTime.now());
-
-        // Grava na BD Local
-        Appointment saved = appointmentRepo.save(body);
-
-        // ENVIA O EVENTO PARA O RABBITMQ
-        appointmentProducer.sendAppointmentCreated(saved);
-
-        return ResponseEntity.created(URI.create("/api/appointments/by-number/" + saved.getAppointmentNumber()))
-                .body(saved);
-    }
-
     @DeleteMapping("/by-number/{appointmentNumber}")
     @Transactional
     public ResponseEntity<?> deleteByNumber(@PathVariable String appointmentNumber) {
@@ -110,9 +202,7 @@ public class AppointmentController {
             return ResponseEntity.notFound().build();
         }
         appointmentRepo.delete(found.get());
-
         appointmentProducer.sendAppointmentDeleted(appointmentNumber);
-
         return ResponseEntity.noContent().build();
     }
 
@@ -120,36 +210,15 @@ public class AppointmentController {
     @Transactional
     public ResponseEntity<?> patchByNumber(@PathVariable String appointmentNumber,
                                            @RequestBody com.example.appointmentservice.repository.AppointmentPatchRequest patch) {
-
         Optional<Appointment> opt = appointmentRepo.findByAppointmentNumber(appointmentNumber);
-        if (opt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
         Appointment appointment = opt.get();
 
-        if (patch.getPhysicianNumber() != null) {
-            if (!physicianRepo.existsById(patch.getPhysicianNumber())) {
-                return ResponseEntity.status(404).body("Novo physicianNumber inexistente (ou não sincronizado)");
-            }
-            appointment.setPhysicianNumber(patch.getPhysicianNumber());
-        }
-
-        if (patch.getPatientNumber() != null) {
-            if (!patientRepo.existsById(patch.getPatientNumber())) {
-                return ResponseEntity.status(404).body("Novo patientNumber inexistente (ou não sincronizado)");
-            }
-            appointment.setPatientNumber(patch.getPatientNumber());
-        }
-
-        if (patch.getConsultationType() != null) appointment.setConsultationType(patch.getConsultationType());
         if (patch.getStatus() != null) appointment.setStatus(patch.getStatus());
-        if (patch.getStartTime() != null) appointment.setStartTime(patch.getStartTime());
-        if (patch.getEndTime() != null) appointment.setEndTime(patch.getEndTime());
 
-        Appointment saved = appointmentRepo.save(appointment);
-
-        appointmentProducer.sendAppointmentUpdated(saved);
-
-        return ResponseEntity.ok(saved);
+        appointmentRepo.save(appointment);
+        appointmentProducer.sendAppointmentUpdated(appointment);
+        return ResponseEntity.ok(appointment);
     }
 }

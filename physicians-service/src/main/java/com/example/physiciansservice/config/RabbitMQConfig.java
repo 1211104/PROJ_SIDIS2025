@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,10 +13,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    // CONFIGURAÇÃO EXISTENTE (CQRS / SYNC)
     @Value("${hap.rabbitmq.exchange.physicians}")
     private String exchangeName;
 
-    // INJETAR O ID DA INSTANCIA (replicaA, replicaB)
     @Value("${INSTANCE_ID}")
     private String instanceId;
 
@@ -26,19 +27,48 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue syncQueue() {
-
         String queueName = "physician-sync-queue-" + instanceId;
-
-        // Durable (true): O RabbitMQ guarda a fila no disco, mesmo que ninguem esteja ligado
-        // Exclusive (false): false (para reconectar)
-        // AutoDelete (false): false (nao apagar quando desligado)
         return new Queue(queueName, true, false, false);
     }
 
     @Bean
-    public Binding binding(FanoutExchange exchange, Queue syncQueue) {
+    public Binding binding(@Qualifier("physicianExchange") FanoutExchange exchange,
+                           @Qualifier("syncQueue") Queue syncQueue) {
         return BindingBuilder.bind(syncQueue).to(exchange);
     }
+
+    // ==========================================
+    // CONFIGURAÇÃO PARA A SAGA
+    // ==========================================
+
+    @Value("${hap.rabbitmq.exchange.appointments:appointment-exchange}")
+    private String appointmentExchangeName;
+
+    @Bean
+    public FanoutExchange appointmentExchange() {
+        return new FanoutExchange(appointmentExchangeName);
+    }
+
+    @Bean
+    public Queue sagaAppointmentQueue() {
+        return new Queue("saga-physician-appointment-listener", true);
+    }
+
+
+    @Bean
+    public Binding bindSagaQueue(@Qualifier("appointmentExchange") FanoutExchange appointmentExchange,
+                                 @Qualifier("sagaAppointmentQueue") Queue q) {
+        return BindingBuilder.bind(q).to(appointmentExchange);
+    }
+
+    @Bean
+    public Queue responseQueue() {
+        return new Queue("physician-response-queue", true);
+    }
+
+    // ==========================================
+    // UTILITÁRIOS
+    // ==========================================
 
     @Bean
     public MessageConverter jsonMessageConverter() {

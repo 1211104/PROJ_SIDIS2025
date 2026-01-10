@@ -16,12 +16,10 @@ public class PhysicianController {
 
     private final PhysicianRepository repository;
     private final PhysicianProducer producer;
-    private final PhysicianProducer physicianProducer;
 
-    public PhysicianController(PhysicianRepository repository, PhysicianProducer producer, PhysicianProducer physicianProducer) {
+    public PhysicianController(PhysicianRepository repository, PhysicianProducer producer) {
         this.repository = repository;
         this.producer = producer;
-        this.physicianProducer = physicianProducer;
     }
 
 
@@ -69,7 +67,6 @@ public class PhysicianController {
         Physician saved = repository.save(body);
 
         // RABBITMQ: Avisa que foi criado um physician
-        // Sincroniza a outra réplica e para o Appointment Service
         producer.sendPhysicianCreated(saved);
 
         return ResponseEntity.created(URI.create("/api/physicians/" + saved.getId())).body(saved);
@@ -80,14 +77,12 @@ public class PhysicianController {
     public ResponseEntity<Physician> update(@PathVariable Long id, @RequestBody Physician newPhysician) {
         return repository.findById(id)
                 .map(existing -> {
-                    // Atualiza Localmente
                     existing.setPhysicianNumber(newPhysician.getPhysicianNumber());
                     existing.setName(newPhysician.getName());
                     existing.setSpecialty(newPhysician.getSpecialty());
                     existing.setContactInfo(newPhysician.getContactInfo());
                     Physician saved = repository.save(existing);
 
-                    // Envia evento UPDATED
                     producer.sendPhysicianUpdated(saved);
 
                     return ResponseEntity.ok(saved);
@@ -100,22 +95,18 @@ public class PhysicianController {
                                                    @RequestBody Physician body) {
         return repository.findByPhysicianNumber(physicianNumber)
                 .map(existing -> {
-                    // --- CENÁRIO A: JÁ EXISTE ---
-
+                    // CENÁRIO A: JÁ EXISTE
                     if (body.getName() != null) existing.setName(body.getName());
                     if (body.getSpecialty() != null) existing.setSpecialty(body.getSpecialty());
                     if (body.getContactInfo() != null) existing.setContactInfo(body.getContactInfo());
 
                     Physician saved = repository.save(existing);
-
-                    // Envia evento UPDATE
                     producer.sendPhysicianUpdated(saved);
 
                     return ResponseEntity.ok(saved);
                 })
                 .orElseGet(() -> {
-                    // --- CENÁRIO B: NÃO EXISTE (Lógica CREATE / UPSERT) ---
-
+                    // CENÁRIO B: NÃO EXISTE (Lógica CREATE / UPSERT)
                     Physician newPhysician = new Physician();
                     newPhysician.setPhysicianNumber(physicianNumber);
 
@@ -124,8 +115,6 @@ public class PhysicianController {
                     newPhysician.setContactInfo(body.getContactInfo());
 
                     Physician saved = repository.save(newPhysician);
-
-                    // Envia evento CREATED
                     producer.sendPhysicianCreated(saved);
 
                     return ResponseEntity.created(URI.create("/api/physicians/by-number/" + saved.getPhysicianNumber()))
@@ -137,13 +126,8 @@ public class PhysicianController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!repository.existsById(id)) return ResponseEntity.notFound().build();
 
-        // physicianNumber necessário antes de apagar
         Physician p = repository.findById(id).get();
-
-        // Apaga Localmente
         repository.deleteById(id);
-
-        // Envia evento DELETED
         producer.sendPhysicianDeleted(p.getPhysicianNumber());
 
         return ResponseEntity.noContent().build();
@@ -154,14 +138,9 @@ public class PhysicianController {
         var opt = repository.findByPhysicianNumber(physicianNumber);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
 
-        // Apaga Localmente
         repository.delete(opt.get());
-
-        // Envia evento DELETED
         producer.sendPhysicianDeleted(physicianNumber);
 
         return ResponseEntity.noContent().build();
     }
-
-
 }

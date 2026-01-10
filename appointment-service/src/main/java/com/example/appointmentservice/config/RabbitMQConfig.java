@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    // Exchanges para CQRS (Broadcast)
     @Value("${hap.rabbitmq.exchange.physicians}")
     private String physicianExchangeName;
 
@@ -21,8 +22,12 @@ public class RabbitMQConfig {
     private String appointmentExchangeName;
 
     // INJETAR O ID DA INSTANCIA (Crucial para CQRS com DB local)
-    @Value("${INSTANCE_ID}")
+    @Value("${INSTANCE_ID:${random.value}}")
     private String instanceId;
+
+    // =======================================
+    // BEANS PARA SINCRONIZAÇÃO (CQRS)
+    // =======================================
 
     @Bean
     public FanoutExchange physicianExchange() { return new FanoutExchange(physicianExchangeName); }
@@ -33,7 +38,7 @@ public class RabbitMQConfig {
     @Bean
     public FanoutExchange appointmentExchange() { return new FanoutExchange(appointmentExchangeName); }
 
-
+    // Filas Únicas por Instância (Broadcast)
     @Bean
     public Queue physicianQueue() {
         return new Queue("appointment-physician-sync-queue-" + instanceId, true);
@@ -49,20 +54,39 @@ public class RabbitMQConfig {
         return new Queue("appointment-sync-queue-" + instanceId, true);
     }
 
-    // Bindings
+    // Bindings CQRS (COM QUALIFIERS PARA SEGURANÇA)
     @Bean
-    public Binding bindPhysician(FanoutExchange physicianExchange, @Qualifier("physicianQueue") Queue q) {
+    public Binding bindPhysician(@Qualifier("physicianExchange") FanoutExchange physicianExchange,
+                                 @Qualifier("physicianQueue") Queue q) {
         return BindingBuilder.bind(q).to(physicianExchange);
     }
 
     @Bean
-    public Binding bindPatient(FanoutExchange patientExchange, @Qualifier("patientQueue") Queue q) {
+    public Binding bindPatient(@Qualifier("patientExchange") FanoutExchange patientExchange,
+                               @Qualifier("patientQueue") Queue q) {
         return BindingBuilder.bind(q).to(patientExchange);
     }
 
     @Bean
-    public Binding bindAppointment(FanoutExchange appointmentExchange, @Qualifier("appointmentSyncQueue") Queue q) {
+    public Binding bindAppointment(@Qualifier("appointmentExchange") FanoutExchange appointmentExchange,
+                                   @Qualifier("appointmentSyncQueue") Queue q) {
         return BindingBuilder.bind(q).to(appointmentExchange);
+    }
+
+    // =======================================
+    // BEANS PARA A SAGA (NOVO)
+    // =======================================
+
+    // Estas filas NÃO têm instanceId. São partilhadas entre réplicas (Worker Pattern).
+
+    @Bean
+    public Queue physicianResponseQueue() {
+        return new Queue("physician-response-queue", true);
+    }
+
+    @Bean
+    public Queue patientResponseQueue() {
+        return new Queue("patient-response-queue", true);
     }
 
     @Bean

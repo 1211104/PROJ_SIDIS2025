@@ -1,3 +1,3 @@
 package com.example.appointmentservice.model;
 
-public enum AppointmentStatus {SCHEDULED, CANCELLED, DONE}
+public enum AppointmentStatus {SCHEDULED, CANCELLED, DONE, PENDING, CONFIRMED, REJECTED}
