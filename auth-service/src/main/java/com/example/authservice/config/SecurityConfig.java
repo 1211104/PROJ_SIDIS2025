@@ -15,32 +15,40 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-public class AuthConfig {
+public class SecurityConfig {
+
 
     @Bean
     public UserDetailsService userDetailsService() {
-        // Usa a classe CustomUserDetailsService
         return new CustomUserDetailsService();
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(csrf -> csrf.disable())
+        return http
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+
                         .requestMatchers("/auth/**", "/h2-console/**").permitAll()
+
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+
                         .anyRequest().authenticated()
                 )
-                // Permitir frames para o H2
+
                 .headers(h -> h.frameOptions(f -> f.disable()))
                 .build();
     }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // Bean necessario para ligar o UserDetailsService a autenticacao
+
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -48,6 +56,7 @@ public class AuthConfig {
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
