@@ -2,6 +2,7 @@ package com.example.patientservice.controller;
 
 import com.example.patientservice.model.Patient;
 import com.example.patientservice.service.PatientService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +25,17 @@ public class PatientController {
     }
 
     @GetMapping("/number/{patientNumber}")
-    public ResponseEntity<Patient> getByNumber(@PathVariable String patientNumber) {
+    public ResponseEntity<Patient> getByNumber(
+            @PathVariable String patientNumber,
+            @RequestHeader(value = "X-User-Name", required = false) String loggedUser,
+            @RequestHeader(value = "X-User-Role", required = false) String loggedRole) {
+
+        // Validação de Segurança (RBAC + Ownership)
+        // Se não for ADMIN e o patientNumber da URL for diferente do utilizador logado -> 403
+        if (!"ADMIN".equals(loggedRole) && !patientNumber.equals(loggedUser)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         return service.findByNumber(patientNumber)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

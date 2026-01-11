@@ -39,15 +39,15 @@ public class AppointmentService {
         this.objectMapper = objectMapper;
     }
 
-    // --- LEITURA (Replay de Eventos ou Fallback para BD) ---
+    // LEITURA (Replay de Eventos ou Fallback para BD)
 
     public Optional<Appointment> findByNumber(String appointmentNumber) {
-        // 1. Tenta reconstruir via Event Sourcing (Verdade absoluta)
+        // Tenta reconstruir via Event Sourcing (Verdade absoluta)
         Appointment replayed = replayEvents(appointmentNumber);
         if (replayed != null) {
             return Optional.of(replayed);
         }
-        // 2. Fallback: Projeção de Leitura (BD Local)
+        // Fallback: Projeção de Leitura (BD Local)
         return appointmentRepo.findByAppointmentNumber(appointmentNumber);
     }
 
@@ -56,7 +56,7 @@ public class AppointmentService {
         return appointmentRepo.findAll();
     }
 
-    // --- ESCRITA (Command -> Event Store -> RabbitMQ) ---
+    // ESCRITA (Command -> Event Store -> RabbitMQ)
 
     @Transactional
     public Appointment createAppointment(Appointment body) {
@@ -68,22 +68,40 @@ public class AppointmentService {
             throw new IllegalArgumentException("Patient inexistente (ou não sincronizado)");
         }
 
-        // 2. Preparar Dados
+
         String newId = UUID.randomUUID().toString();
         body.setAppointmentNumber(newId);
         body.setStatus(AppointmentStatus.PENDING);
         if (body.getStartTime() == null) body.setStartTime(LocalDateTime.now());
 
         try {
-            // 3. Event Sourcing: Gravar o evento CREATED
+            // Event Sourcing: Preparar e Gravar o evento CREATED
             String jsonPayload = objectMapper.writeValueAsString(body);
             AppointmentEventStore newEvent = new AppointmentEventStore(
                     newId, "APPOINTMENT_CREATED", jsonPayload
             );
-            eventRepository.save(newEvent);
 
-            // 4. RabbitMQ: Avisar o mundo (Saga Start + Sync Réplicas)
-            appointmentProducer.sendAppointmentCreated(body);
+            // Guarda o evento na base de dados (Persistence)
+            AppointmentEventStore savedEvent = eventRepository.save(newEvent);
+
+            try {
+                // RabbitMQ: Avisar o mundo (Saga Start + Sync Réplicas)
+                appointmentProducer.sendAppointmentCreated(body);
+
+                System.out.println("SAGA [Success]: Evento gravado e mensagem enviada. ID: " + newId);
+
+            } catch (Exception mqError) {
+                // SAGA ROLLBACK (Compensating Transaction)
+                // Se o RabbitMQ falhar, desfaz a gravação na base de dados
+
+                System.err.println("SAGA [Failure]: Falha no envio para RabbitMQ. A reverter Event Store...");
+
+                // Apaga o evento explicitamente (Compensação)
+                eventRepository.delete(savedEvent);
+
+                // Lança exceção para o cliente (e para garantir rollback da transação Spring se houver)
+                throw new RuntimeException("Erro Crítico: Falha na comunicação (Saga). Consulta cancelada.", mqError);
+            }
 
             return body;
 
@@ -95,13 +113,13 @@ public class AppointmentService {
     @Transactional
     public void deleteAppointment(String appointmentNumber) {
         if (appointmentRepo.findByAppointmentNumber(appointmentNumber).isPresent()) {
-            // Em Event Sourcing, delete é apenas mais um evento, mas para simplificar aqui:
+
             appointmentProducer.sendAppointmentDeleted(appointmentNumber);
-            // Nota: O SyncConsumer vai tratar de apagar da BD de leitura
+
         }
     }
 
-    // --- LÓGICA DE REPLAY (Privada) ---
+    // LÓGICA DE REPLAY (Privada)
 
     private Appointment replayEvents(String appointmentNumber) {
         List<AppointmentEventStore> history = eventRepository.findByAppointmentNumberOrderByOccurredAtAsc(appointmentNumber);

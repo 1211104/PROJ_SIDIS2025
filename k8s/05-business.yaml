@@ -1,0 +1,100 @@
+# --- PATIENT ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-service
+spec:
+  selector:
+    app: patient-service
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - name: patient-service
+          image: sidis_v2-patient-service:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: global-config
+
+---
+# --- PHYSICIAN ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: physician-service
+spec:
+  selector:
+    app: physician-service
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: physician-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: physician-service
+  template:
+    metadata:
+      labels:
+        app: physician-service
+    spec:
+      containers:
+        - name: physician-service
+          image: sidis_v2-physician-service:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: global-config
+
+---
+# --- APPOINTMENT ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-service
+spec:
+  selector:
+    app: appointment-service
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+        - name: appointment-service
+          image: sidis_v2-appointment-service:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: global-config

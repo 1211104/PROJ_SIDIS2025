@@ -1,0 +1,29 @@
+name: Build e Teste Automatico
+
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. download do código
+      - uses: actions/checkout@v3
+
+      # 2. Instalar o Java 17
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # 3. Compilar o projeto
+      # Usamos -DskipTests para garantir que passa (pois o GitHub não tem a tua BD nem o RabbitMQ ligados)
+      - name: Compilar com Maven
+        run: mvn clean package -DskipTests

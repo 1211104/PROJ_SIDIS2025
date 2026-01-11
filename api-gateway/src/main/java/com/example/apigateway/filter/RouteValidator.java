@@ -12,7 +12,10 @@ public class RouteValidator {
     public static final List<String> openApiEndpoints = List.of(
             "/auth/register",
             "/auth/token",
-            "/eureka"        // Endpoints do Eureka
+            "/eureka",
+            "/actuator/prometheus",
+            "/actuator/health",
+            "/v3/api-docs"
     );
 
     // Metodo que verifica se precisa de seguranca

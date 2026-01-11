@@ -79,7 +79,6 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_PROFILES_ACTIVE=docker
-      - INSTANCE_ID=physician1
     depends_on:
       - rabbitmq
       - discovery-service
